@@ -117,7 +117,7 @@ enum SettingsIndex {
             i("Dock charging effect", "Animate the charging highlight in the Dock icon.", ["animation", "animate"], .battery),
             i("Charging bolt pulse", "The bolt swells and glows as the comet passes.", ["animation", "bolt"], .battery),
             i("Test charging animation", "Plays the animation without a charger.", ["preview", "demo", "try"], .battery),
-            i("Wave speed", "How fast the wave ripples along the ring while charging.", ["animation", "speed", "faster", "slower", "wave"], .battery),
+            i("Wave speed", "How fast the charging animation runs. Lower is slower.", ["animation", "speed", "faster", "slower", "wave"], .battery),
             i("Show percentage next to the icon while charging", "Battery level as text beside the icon while charging or plugged in.", ["percent", "percentage", "text", "charging"], .battery),
             i("Show time remaining", "Minutes to full or empty beside the icon.", ["time", "minutes", "hours", "text", "estimate"], .battery),
             i("Percentage/bolt size", "The number and bolt share this size.", ["font", "scale"], .battery),

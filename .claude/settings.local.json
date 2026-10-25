@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git add *)",
+      "Bash(git commit -q -m 'Speed setting scales the whole charging animation \\(down to 0.1x\\); larger charging bolt *)"
+    ]
+  }
+}

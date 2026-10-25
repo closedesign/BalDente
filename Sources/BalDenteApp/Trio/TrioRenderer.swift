@@ -127,9 +127,12 @@ enum TrioRenderer {
             drawText(ctx, number, centerX: TrioGeometry.centerX, baseline: 17 + (fs - 20) * 7 / 12)
         case .bolt:
             ctx.saveGState()
-            let center = CGPoint(x: TrioGeometry.centerX, y: 11.8)
-            ctx.translateBy(x: center.x, y: center.y)
-            ctx.scaleBy(x: p.symbolScale * boltScale, y: p.symbolScale * boltScale)
+            // The bolt is drawn about 1.7x larger than the raw path and sits a little lower, so it fills the ring's gap
+            // (the pulse is limited so it never gets clipped by the top of the canvas).
+            let s = min(2.0, min(1.7 * p.symbolScale, 1.9) * boltScale)
+            let center = CGPoint(x: TrioGeometry.centerX, y: 11.8), drawAt = CGPoint(x: TrioGeometry.centerX, y: 18)
+            ctx.translateBy(x: drawAt.x, y: drawAt.y)
+            ctx.scaleBy(x: s, y: s)
             ctx.translateBy(x: -center.x, y: -center.y)
             ctx.addPath(boltPath()); ctx.setFillColor(boltColor.cgColor); ctx.setStrokeColor(boltColor.cgColor)
             ctx.setLineWidth(1.4); ctx.drawPath(using: .fillStroke)

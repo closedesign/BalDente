@@ -106,3 +106,15 @@ final class WaveClockTests: XCTestCase {
         XCTAssertLessThan(p, 0.25 / 1.8 + 1e-9)
     }
 }
+
+final class WaveClockSpeedTests: XCTestCase {
+    func testSlowestSpeedIsTenTimesSlowerThanNormal() {
+        var slow = WaveClock(), normal = WaveClock()
+        for i in 0...8 {
+            let t = Date(timeIntervalSince1970: Double(i) * 0.1)
+            slow.advance(now: t, speed: 0.1, cycle: 1.8); normal.advance(now: t, speed: 1, cycle: 1.8)
+        }
+        XCTAssertEqual(slow.elapsed * 10, normal.elapsed, accuracy: 1e-9)
+        XCTAssertEqual(WaveClock.speedRange.lowerBound, 0.1)
+    }
+}

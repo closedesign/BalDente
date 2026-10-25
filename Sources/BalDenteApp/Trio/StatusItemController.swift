@@ -174,15 +174,18 @@ final class StatusItemController: NSObject {
     /// Steady 1.8 s cycles, with one short burst right after plugging in or gaining a percent.
     func currentFrame(gap: CGFloat, boltInGap: Bool, progress: Double) -> ChargingFrame? {
         let now = Date()
-        var t = now.timeIntervalSince(animationStart), cycle = ChargingFrame.steadyCycle
+        // One clock drives the comet, heartbeat and wave, so the speed setting slows or speeds up the whole effect.
+        let speed = min(WaveClock.speedRange.upperBound, max(WaveClock.speedRange.lowerBound, model.trio.chargeWaveSpeed))
+        let wave = waveClock.advance(now: now, speed: speed, cycle: ChargingFrame.steadyCycle)
+        var t = waveClock.elapsed, cycle = ChargingFrame.steadyCycle
         if let e = system.chargeEvent, e.date > animationStart.addingTimeInterval(-1) {
-            let burst = e.plugIn ? ChargingFrame.plugInBurst : ChargingFrame.levelUpBurst
+            let burst = (e.plugIn ? ChargingFrame.plugInBurst : ChargingFrame.levelUpBurst) / speed
             let dt = now.timeIntervalSince(e.date)
-            if dt < burst { t = dt; cycle = burst } else { t = dt - burst }
+            if dt < burst { t = dt * speed; cycle = burst * speed } else { t = (dt - burst) * speed }
         }
         guard var f = ChargingFrame.at(progress: progress, t: t, cycle: cycle, gap: gap, boltInGap: boltInGap) else { return nil }
         // The wave runs on its own clock so its speed is independent of the comet and the plug-in burst.
-        f.wavePhase = waveClock.advance(now: now, speed: model.trio.chargeWaveSpeed, cycle: ChargingFrame.steadyCycle)
+        f.wavePhase = wave
         return f
     }
 
