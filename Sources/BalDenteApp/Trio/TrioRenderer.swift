@@ -41,6 +41,27 @@ enum TrioRenderer {
         return img
     }
 
+    /// The same icon drawn once into a bitmap. A drawing-handler image is re-run every time AppKit paints it (more than once per frame
+    /// on a status item), so animation frames use this instead; the still icon keeps the handler so it follows the menu bar's appearance.
+    static func bitmapImage(_ s: TrioState, _ p: TrioPrefs, size: CGFloat, scale: CGFloat, dark: Bool, frame: ChargingFrame?) -> NSImage {
+        let px = max(1, Int((size * scale).rounded()))
+        guard let rep = NSBitmapImageRep(bitmapDataPlanes: nil, pixelsWide: px, pixelsHigh: px, bitsPerSample: 8, samplesPerPixel: 4,
+                                         hasAlpha: true, isPlanar: false, colorSpaceName: .deviceRGB, bytesPerRow: 0, bitsPerPixel: 0),
+              let target = NSGraphicsContext(bitmapImageRep: rep) else { return image(s, p, size: size, frame: frame, forceDark: dark) }
+        let cg = target.cgContext
+        cg.translateBy(x: 0, y: CGFloat(px)); cg.scaleBy(x: 1, y: -1)               // y-down, like the handler image's canvas
+        cg.scaleBy(x: CGFloat(px) / TrioGeometry.side, y: CGFloat(px) / TrioGeometry.side)
+        NSGraphicsContext.saveGraphicsState()
+        NSGraphicsContext.current = NSGraphicsContext(cgContext: cg, flipped: true)
+        draw(cg, s, p, Palette(dark: dark), frame: frame)
+        NSGraphicsContext.restoreGraphicsState()
+        let img = NSImage(size: NSSize(width: size, height: size))
+        rep.size = NSSize(width: size, height: size)
+        img.addRepresentation(rep)
+        img.isTemplate = false
+        return img
+    }
+
     /// The Dock version: the same icon on a rounded tile.
     static func dockImage(_ s: TrioState, _ p: TrioPrefs, frame: ChargingFrame?) -> NSImage {
         let side: CGFloat = 512
@@ -84,9 +105,18 @@ enum TrioRenderer {
         return c.fg
     }
 
+    nonisolated(unsafe) private static var fontCache: [String: NSFont] = [:]
+    private static let fontLock = NSLock()
+
+    /// Building a rounded font goes through font descriptors, which is slow enough to show up at 20 frames a second, so keep them.
     private static func roundedFont(_ size: CGFloat, _ weight: NSFont.Weight = .bold) -> NSFont {
-        let f = NSFont.monospacedDigitSystemFont(ofSize: size, weight: weight)
-        return NSFont(descriptor: f.fontDescriptor.withDesign(.rounded) ?? f.fontDescriptor, size: size) ?? f
+        let key = "\(size)-\(weight.rawValue)"
+        fontLock.lock(); defer { fontLock.unlock() }
+        if let f = fontCache[key] { return f }
+        let base = NSFont.monospacedDigitSystemFont(ofSize: size, weight: weight)
+        let f = NSFont(descriptor: base.fontDescriptor.withDesign(.rounded) ?? base.fontDescriptor, size: size) ?? base
+        fontCache[key] = f
+        return f
     }
 
     private static func text(_ string: String, size: CGFloat, color: NSColor) -> NSAttributedString {
@@ -168,7 +198,7 @@ enum TrioRenderer {
         if progress > 0.03 {
             // A wave rippling along the filled arc: the ring swells and brightens as each crest passes.
             // Troughs are noticeably darker and thinner than crests, so the motion reads even at menu bar size.
-            let n = 36
+            let n = 24
             let trough = blend(base, NSColor.black, 0.45)
             ctx.setLineCap(.butt)
             for i in 0..<n {
@@ -182,7 +212,7 @@ enum TrioRenderer {
         }
         if let tail = f.tail {
             // A fading comet tail: thin slices, transparent at the back and bright at the head.
-            let n = 14
+            let n = 10
             ctx.setLineCap(.butt)
             for i in 0..<n {
                 let a = tail.lowerBound + (tail.upperBound - tail.lowerBound) * Double(i) / Double(n)
@@ -198,11 +228,15 @@ enum TrioRenderer {
         if f.beadAlpha > 0 {
             // A glowing head so the motion reads even at 16 to 22 pt in the menu bar.
             let r = lw * 0.78
-            ctx.saveGState()
-            ctx.setShadow(offset: .zero, blur: lw * 1.4, color: color.withAlphaComponent(0.9 * f.beadAlpha).cgColor)
+            // Two soft rings stand in for a blurred shadow: a real shadow runs a Gaussian blur every frame, which was the
+            // most expensive part of the animation.
+            for (scale, alpha) in [(2.2, 0.16), (1.6, 0.30)] {
+                let g = r * scale
+                ctx.setFillColor(color.withAlphaComponent(alpha * f.beadAlpha).cgColor)
+                ctx.fillEllipse(in: CGRect(x: pt.x - g, y: pt.y - g, width: g * 2, height: g * 2))
+            }
             ctx.setFillColor(color.withAlphaComponent(f.beadAlpha).cgColor)
             ctx.fillEllipse(in: CGRect(x: pt.x - r, y: pt.y - r, width: r * 2, height: r * 2))
-            ctx.restoreGState()
         }
         if f.heartbeatAlpha > 0 {
             let r = lw * 0.95 * f.heartbeatScale

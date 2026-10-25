@@ -1,8 +1,14 @@
 import BalDenteCore
 import SwiftUI
 
+/// BalDente lives in the menu bar: closing the settings window must not quit the app (and take the icon with it).
+final class AppDelegate: NSObject, NSApplicationDelegate {
+    func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool { false }
+}
+
 @main
 struct BalDenteApp: App {
+    @NSApplicationDelegateAdaptor(AppDelegate.self) private var delegate
     @StateObject private var model = Model()
 
     var body: some Scene {

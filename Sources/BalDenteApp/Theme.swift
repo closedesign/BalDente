@@ -65,15 +65,17 @@ extension Color {
 struct AuroraBackground: View {
     let palette: [Color]
     var animated = true
-    @Environment(\.scenePhase) private var phase
 
     var body: some View {
-        let live = animated && phase == .active
-        TimelineView(.animation(minimumInterval: 1.0 / 15, paused: !live)) { ctx in
-            let t = ctx.date.timeIntervalSinceReferenceDate * 0.2
-            MeshGradient(width: 3, height: 3, points: points(live ? t : 0), colors: colors)
-                .overlay(Color.black.opacity(0.22))
+        // The drift runs as Core Animation layers (GPU, outside SwiftUI). Animating the mesh from a TimelineView re-evaluated the
+        // whole window, glass cards included, on every frame and cost 25 to 50 percent of a core.
+        ZStack {
+            MeshGradient(width: 3, height: 3, points: points(0), colors: colors)
+            DriftingGlow(colors: [palette[0], palette[1], palette[2]].map { NSColor($0) },
+                         animated: animated && !ProcessInfo.processInfo.isLowPowerModeEnabled)
+                .opacity(0.55)
         }
+        .overlay(Color.black.opacity(0.22))
         .ignoresSafeArea()
     }
 
@@ -89,5 +91,68 @@ struct AuroraBackground: View {
             SIMD2(0, 0.5 + w(1)), SIMD2(0.5 + w(2), 0.5 + w(3)), SIMD2(1, 0.5 + w(4)),
             SIMD2(0, 1), SIMD2(0.5 + w(5), 1), SIMD2(1, 1),
         ]
+    }
+}
+
+
+/// Three soft color blobs that drift slowly. Pure Core Animation: once started, the render server moves them with no app CPU.
+private struct DriftingGlow: NSViewRepresentable {
+    let colors: [NSColor]
+    let animated: Bool
+
+    func makeNSView(context: Context) -> GlowView { let v = GlowView(); v.update(colors: colors, animated: animated); return v }
+    func updateNSView(_ v: GlowView, context: Context) { v.update(colors: colors, animated: animated) }
+
+    final class GlowView: NSView {
+        private var blobs: [CAGradientLayer] = []
+        private var colors: [NSColor] = []
+        private var animated = true
+        // Where each blob starts and drifts to, as fractions of the view.
+        private let routes: [(CGPoint, CGPoint, Double)] = [
+            (CGPoint(x: 0.22, y: 0.30), CGPoint(x: 0.42, y: 0.55), 24),
+            (CGPoint(x: 0.78, y: 0.25), CGPoint(x: 0.58, y: 0.45), 31),
+            (CGPoint(x: 0.55, y: 0.85), CGPoint(x: 0.30, y: 0.62), 27),
+        ]
+
+        override var isFlipped: Bool { true }
+        override func hitTest(_ point: NSPoint) -> NSView? { nil }
+
+        func update(colors: [NSColor], animated: Bool) {
+            let changed = colors != self.colors || animated != self.animated
+            self.colors = colors; self.animated = animated
+            if changed { rebuild() }
+        }
+
+        private var builtFor = CGSize.zero
+        override func layout() {
+            super.layout()
+            if bounds.size != builtFor { rebuild() }     // only on a real resize, so the drift isn't restarted by every layout pass
+        }
+
+        private func rebuild() {
+            wantsLayer = true
+            layer?.sublayers?.forEach { $0.removeFromSuperlayer() }
+            blobs = []
+            guard bounds.width > 1, bounds.height > 1 else { return }
+            builtFor = bounds.size
+            let d = max(bounds.width, bounds.height) * 0.85
+            for (i, r) in routes.enumerated() where i < colors.count {
+                let g = CAGradientLayer()
+                g.type = .radial
+                g.colors = [colors[i].withAlphaComponent(0.9).cgColor, colors[i].withAlphaComponent(0).cgColor]
+                g.startPoint = CGPoint(x: 0.5, y: 0.5); g.endPoint = CGPoint(x: 1, y: 1)
+                g.bounds = CGRect(x: 0, y: 0, width: d, height: d)
+                g.position = CGPoint(x: bounds.width * r.0.x, y: bounds.height * r.0.y)
+                if animated {
+                    let a = CABasicAnimation(keyPath: "position")
+                    a.fromValue = CGPoint(x: bounds.width * r.0.x, y: bounds.height * r.0.y)
+                    a.toValue = CGPoint(x: bounds.width * r.1.x, y: bounds.height * r.1.y)
+                    a.duration = r.2; a.autoreverses = true; a.repeatCount = .infinity
+                    a.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
+                    g.add(a, forKey: "drift")
+                }
+                layer?.addSublayer(g); blobs.append(g)
+            }
+        }
     }
 }

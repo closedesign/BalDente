@@ -345,11 +345,13 @@ struct IconPreviewCard: View {
     @ObservedObject var model: Model
     @ObservedObject var system: SystemMonitor
     @Binding var dark: Bool
+    /// The preview animates only while its window is up front; a hidden or background window must not keep redrawing SwiftUI.
+    @Environment(\.scenePhase) private var phase
 
     var body: some View {
         let s = model.statusController?.state ?? TrioState(power: system.effectivePower, net: system.net, audio: system.audio)
         let p = model.trio
-        let animate = p.menuBarChargingEffect && s.power.charging && !s.power.charged && !system.reduceMotion
+        let animate = p.menuBarChargingEffect && s.power.charging && !s.power.charged && !system.reduceMotion && phase == .active
         let top = TrioRules.topIndicator(charging: s.power.charging, plugged: s.power.plugged, showPercentage: p.showPercentage,
                                          showChargingIndicator: p.showChargingIndicator, percentageWhenConnected: p.percentageWhenConnected)
         let side = TrioRules.sideText(present: s.power.present, percent: s.power.percent, plugged: s.power.plugged, charging: s.power.charging,
@@ -376,7 +378,7 @@ struct IconPreviewCard: View {
                 Spacer(minLength: 16)
                 HStack(spacing: 14) {
                     HStack(spacing: 4) {
-                        TimelineView(.animation(minimumInterval: 1 / ChargingFrame.fps, paused: !animate)) { ctx in
+                        TimelineView(.animation(minimumInterval: 1 / 12, paused: !animate)) { ctx in
                             let f = animate ? model.statusController?.currentFrame(
                                 gap: s.power.charging && p.showChargingIndicator ? TrioGeometry.boltGap * p.symbolScale : TrioGeometry.numberGap,
                                 boltInGap: s.power.charging && p.showChargingIndicator,

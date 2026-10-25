@@ -260,8 +260,21 @@ final class SystemMonitor: ObservableObject {
         n.vpn = addrs.filter { name, ips in
             ["utun", "ppp", "ipsec", "tap", "tun"].contains { name.hasPrefix($0) } && ips.contains { !$0.hasPrefix("169.254.") }
         }.keys.sorted()
-        if path?.status == .satisfied { n.router = NetworkInfo.gatewayIP() }
+        if path?.status == .satisfied { n.router = cachedGateway(key: (n.interface ?? "") + "|" + (n.localIP ?? "")) }
         return n
+    }
+
+    /// The router only changes when the link does, and finding it spawns `netstat`, so reuse the answer while the interface
+    /// and local address stay the same (re-checked every few minutes in case a route changed without either moving).
+    nonisolated(unsafe) private static var gatewayCache: (key: String, ip: String?, at: Date)?
+    private static let gatewayLock = NSLock()
+
+    nonisolated private static func cachedGateway(key: String) -> String? {
+        gatewayLock.lock(); defer { gatewayLock.unlock() }
+        if let c = gatewayCache, c.key == key, Date().timeIntervalSince(c.at) < 300 { return c.ip }
+        let ip = NetworkInfo.gatewayIP()
+        gatewayCache = (key, ip, Date())
+        return ip
     }
 
     nonisolated private static func securityName(_ s: CWSecurity) -> String? {

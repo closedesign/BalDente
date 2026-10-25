@@ -123,7 +123,7 @@ final class StatusItemController: NSObject {
         NSApp.setActivationPolicy(.regular)
     }
 
-    @objc private func themeChanged() { DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { [weak self] in self?.render() } }
+    @objc private func themeChanged() { DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { [weak self] in self?.lastStill = nil; self?.render() } }
 
     // MARK: Rendering
 
@@ -155,11 +155,15 @@ final class StatusItemController: NSObject {
     private var menuAnimates: Bool { item != nil && model.trio.menuBarChargingEffect && chargingAnimates }
     private var dockAnimates: Bool { dockView != nil && model.trio.dockChargingEffect && chargingAnimates }
 
+    /// 8 to 16 frames a second (about 11 at 1x): a slow animation doesn't need 20, and every frame costs a redraw of the icon.
+    private var animationInterval: TimeInterval { 1 / min(16, max(8, 6 + 5 * model.trio.chargeWaveSpeed)) }
+
     private func updateAnimation() {
         let want = menuAnimates || dockAnimates
+        if want, let t = timer, abs(t.timeInterval - animationInterval) > 0.002 { t.invalidate(); timer = nil }
         if want, timer == nil {
             animationStart = Date()
-            let t = Timer(timeInterval: 1 / ChargingFrame.fps, repeats: true) { _ in
+            let t = Timer(timeInterval: animationInterval, repeats: true) { _ in
                 MainActor.assumeIsolated { [weak self] in self?.render() }
             }
             t.tolerance = 0.01
@@ -197,19 +201,38 @@ final class StatusItemController: NSObject {
         return currentFrame(gap: gap, boltInGap: top == .bolt, progress: TrioRules.ringProgress(percent: s.power.percent, full: s.fullLevel))
     }
 
+    /// What the last still (non-animated) render showed. Any model change calls render(), most of them irrelevant to the icon.
+    private var lastStill: (state: TrioState, prefs: TrioPrefs, text: String)?
+    private var lastLabel = ""
+
     private func render() {
         let s = state, p = model.trio
+        let text = menuText(s)
+        if timer == nil {
+            if let l = lastStill, l.state == s, l.prefs == p, l.text == text { return }
+            lastStill = (s, p, text)
+        } else {
+            lastStill = nil
+        }
         let f = timer != nil ? frame(for: s) : nil
         if let b = item?.button {
             let size = CGFloat(min(36, max(16, p.iconSize)))
-            b.image = TrioRenderer.image(s, p, size: size, frame: menuAnimates ? f : nil)
-            let text = menuText(s)
-            if b.title != text {     // render runs at 20 fps while animating; only touch the button when the text changes
+            if timer != nil, menuAnimates {
+                let dark = b.effectiveAppearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
+                b.image = TrioRenderer.bitmapImage(s, p, size: size, scale: b.window?.backingScaleFactor ?? 2, dark: dark, frame: f)
+            } else {
+                b.image = TrioRenderer.image(s, p, size: size, frame: nil)
+            }
+            if b.title != text {     // render runs many times a second while animating; only touch the button when something changed
                 b.title = text
                 b.imagePosition = text.isEmpty ? .imageOnly : .imageLeft
             }
-            b.setAccessibilityLabel(accessibilityText(s))
-            b.toolTip = accessibilityText(s)
+            let label = accessibilityText(s)
+            if label != lastLabel {
+                lastLabel = label
+                b.setAccessibilityLabel(label)
+                b.toolTip = label
+            }
         }
         // The Dock redraws a full tile, so it runs at half the menu bar's frame rate.
         if let v = dockView, !dockAnimates || Date().timeIntervalSince(lastDockFrame) > 0.09 {

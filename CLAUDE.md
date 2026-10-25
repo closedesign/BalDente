@@ -49,6 +49,12 @@ There's no Xcode project — everything goes through `swift build`/`swift test` 
 - Screenshots live in `docs/images/`; retake them when a page's look changes noticeably (no real Wi-Fi names, no helper-update banner).
 
 ## Performance rules (priority for this app)
+- Measured costs (keep them in mind): the settings window used to burn 25-50% of a core because the aurora background was a SwiftUI `TimelineView`
+  (it re-evaluated every glass card per frame). It is now Core Animation layers (`DriftingGlow` in `Theme.swift`); never animate SwiftUI state per frame
+  in the window. The menu bar animation draws a cached bitmap (`TrioRenderer.bitmapImage`) at 8-16 fps, scaled by the speed setting; avoid `setShadow`
+  blur and per-frame font creation in `TrioRenderer`. Network polling must not spawn processes every poll (`cachedGateway`).
+- Profile with `sample <pid> 5 -file out.txt` and `ps -o cputime= -p <pid>` deltas over 30 s, with the window closed and open, and with
+  `BALDENTE_TEST_CHARGING=1` for the animation. Closing the window must not quit the app (`AppDelegate`).
 - No new timers or polling. Use notifications/events that already arrive; piggyback on `Model.refreshStatus` (20 s) or
   the once-a-day log. The only fast timer is the charging animation (20 fps), which stops when not charging, the display
   sleeps, or Reduce Motion is on. Only touch `NSStatusBarButton` properties when the value changed.
