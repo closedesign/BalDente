@@ -2,6 +2,8 @@
 # Builds dist/BalDente.app (and dist/BalDente.dmg with --dmg). The app carries its own helper daemon.
 set -e
 cd "$(dirname "$0")"
+VERSION=$(tr -d '[:space:]' < VERSION)                      # single source of truth; see CLAUDE.md "Versioning"
+BUILD=$(git rev-list --count HEAD 2>/dev/null || echo 1)   # number of commits, so every build is distinct
 [ -f Resources/AppIcon.icns ] || Tools/make_icns.sh
 swift build -c release
 APP=dist/BalDente.app
@@ -19,8 +21,8 @@ cat > "$APP/Contents/Info.plist" <<PLIST
 <key>CFBundleExecutable</key><string>BalDente</string>
 <key>CFBundleIconFile</key><string>AppIcon</string>
 <key>CFBundlePackageType</key><string>APPL</string>
-<key>CFBundleShortVersionString</key><string>0.4</string>
-<key>CFBundleVersion</key><string>4</string>
+<key>CFBundleShortVersionString</key><string>$VERSION</string>
+<key>CFBundleVersion</key><string>$BUILD</string>
 <key>LSMinimumSystemVersion</key><string>26.0</string>
 <key>NSHighResolutionCapable</key><true/>
 <key>LSApplicationCategoryType</key><string>public.app-category.utilities</string>

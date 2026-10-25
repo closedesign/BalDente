@@ -36,6 +36,13 @@ There's no Xcode project — everything goes through `swift build`/`swift test` 
 2. Add a matching `SettingsIndex` entry in `Pages.swift`; its title must equal the row title (or set `anchor:`).
 3. Ranking logic is `BalDenteCore/SettingsSearch.swift` and is unit-tested; keep UI-free logic in Core.
 
+## Versioning
+- The version lives in the `VERSION` file (read by `make_app.sh`; the build number is the git commit count). **Bump it after every major change**
+  (a new feature, a user-visible behavior change, or a notable fix), add a matching `## <version>` heading to `CHANGELOG.md`, and say so in the commit.
+- We are pre-1.0 on purpose: stay on `0.x` (bump the minor for features and big fixes, e.g. 0.5 to 0.6). Tag releases `v<version>` and publish them as GitHub
+  pre-releases until the 1.0 checklist in `CHANGELOG.md` is done: notarized build, tested on at least three Mac models and two macOS versions, a week of daily use
+  without a charging bug, and a clean install/update/uninstall of the helper on a fresh account.
+
 ## README upkeep (do this every time)
 - **Whenever you add, change or remove a user-visible feature or setting, update `README.md` in the same change** (the "All features" list, and
   "Zones" if it touches zones), plus `CHANGELOG.md`. The README is the public sales page (github.com/closedesign/BalDente); keep claims true to the code.
