@@ -36,6 +36,18 @@ There's no Xcode project — everything goes through `swift build`/`swift test` 
 2. Add a matching `SettingsIndex` entry in `Pages.swift`; its title must equal the row title (or set `anchor:`).
 3. Ranking logic is `BalDenteCore/SettingsSearch.swift` and is unit-tested; keep UI-free logic in Core.
 
+## README upkeep (do this every time)
+- **Whenever you add, change or remove a user-visible feature or setting, update `README.md` in the same change** (the "All features" list, and
+  "Zones" if it touches zones), plus `CHANGELOG.md`. The README is the public sales page (github.com/closedesign/BalDente); keep claims true to the code.
+- Keep the **Zones** section highlighted: zone switching by Wi-Fi or saved place is the headline feature, and it is free here whereas other
+  battery limiters usually charge for it. Don't make claims about specific competitors' features that can't be verified.
+- Defaults to state accurately: a fresh install ships zones **Home 50%/45%**, School 100%/95%, Travel 90%/85%, and "Everywhere else" 80%/75%
+  (`Config.init` in `BalDenteCore/Zones.swift`). **Out of the box charging is limited to 50% at home**; the Home zone applies once the user adds
+  their home Wi-Fi. Heat Protection defaults to 35 °C (range 30–60, `BalDenteCore/HeatLimit.swift`).
+- Donate buttons (Ko-fi, Buy Me a Coffee: `SupportLinks` in `ConfigPages.swift`) appear on About, Overview and the compact layout, and in the README and
+  `.github/FUNDING.yml`. Keep them in sync if the handles change (both are `closedesign`).
+- Screenshots live in `docs/images/`; retake them when a page's look changes noticeably (no real Wi-Fi names, no helper-update banner).
+
 ## Performance rules (priority for this app)
 - No new timers or polling. Use notifications/events that already arrive; piggyback on `Model.refreshStatus` (20 s) or
   the once-a-day log. The only fast timer is the charging animation (20 fps), which stops when not charging, the display

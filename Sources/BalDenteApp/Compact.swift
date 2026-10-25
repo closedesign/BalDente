@@ -114,6 +114,10 @@ struct CompactView: View {
                 LabeledContent("Temperature", value: (model.status?.tempC ?? model.info?.tempC).map { String(format: "%.1f °C", $0) } ?? "–")
                 LabeledContent("Power", value: model.info.map { String(format: "%+.1f W", $0.watts) } ?? "–")
             }
+            Section("Support BalDente") {
+                Text("Free forever. Chip in if it helps.").font(.callout).foregroundStyle(.secondary)
+                DonateButtons()
+            }
             Section("Menu bar icon") {
                 Text("Icon size, charging animation, network, Bluetooth, audio and status panel options live in the regular window.")
                     .font(.callout).foregroundStyle(.secondary)

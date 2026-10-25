@@ -161,6 +161,7 @@ enum SettingsIndex {
             i("Smart notifications", "Battery health drops and a silent helper.", ["alerts", "health", "warning"], .general),
             i("Export or import settings", "Back up zones and limits to a file.", ["backup", "restore", "json", "transfer"], .general),
             i("Reset icon and panel settings", "Charging limits and zones are not affected.", ["defaults", "restore"], .general),
+            i("Support BalDente", "Donate on Ko-fi or Buy Me a Coffee. BalDente stays free.", ["donate", "coffee", "ko-fi", "tip", "sponsor", "support", "money"], .about),
             i("About BalDente", "Version, credits and licenses.", ["version", "credits", "license", "status trio"], .about),
         ]
     }()

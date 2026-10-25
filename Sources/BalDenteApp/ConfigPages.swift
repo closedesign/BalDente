@@ -132,8 +132,31 @@ struct GeneralPage: View {
 
 // MARK: About
 
+/// Where people can chip in. BalDente is free; these are optional.
+enum SupportLinks {
+    static let kofi = URL(string: "https://ko-fi.com/closedesign")!
+    static let coffee = URL(string: "https://www.buymeacoffee.com/closedesign")!
+}
+
+/// The two donate buttons, reused on About, Overview and the compact layout.
+struct DonateButtons: View {
+    var body: some View {
+        HStack(spacing: 10) {
+            Link(destination: SupportLinks.kofi) { pill("Ko-fi", "heart.fill") }
+                .buttonStyle(.glassProminent).tint(.pink)
+            Link(destination: SupportLinks.coffee) { pill("Buy Me a Coffee", "cup.and.saucer.fill") }
+                .buttonStyle(.glassProminent).tint(.orange)
+        }
+    }
+}
+
 struct AboutPage: View {
     var body: some View {
+        SettingsGroup("Support BalDente") {
+            Text("BalDente is free and will stay free, with no paid tier. If it saved your battery, a coffee helps keep it updated and working on more Macs.")
+                .fixedSize(horizontal: false, vertical: true)
+            DonateButtons().padding(.top, 4)
+        }
         SettingsGroup("About BalDente") {
             Text("BalDente \(appVersionText)").font(.headline)
             Text("A free battery charge limiter for macOS with zones, Ready by, heat protection and calibration, plus a combined menu bar icon for battery, network and volume.")

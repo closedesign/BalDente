@@ -172,6 +172,11 @@ struct OverviewPage: View {
                 Button("Open General") { model.go(.general, focus: "Location access") }.buttonStyle(.link).font(.caption)
             }
             Spacer()
+            Menu {
+                Link("Ko-fi", destination: SupportLinks.kofi)
+                Link("Buy Me a Coffee", destination: SupportLinks.coffee)
+            } label: { Label("Support BalDente", systemImage: "heart.fill").font(.callout) }
+                .menuStyle(.borderlessButton).fixedSize().foregroundStyle(.pink)
         }
     }
 }

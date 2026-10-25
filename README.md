@@ -46,21 +46,79 @@ tracking.** The source is here, so you can read exactly what the helper does.
 
 > BalDente is not affiliated with AlDente or BattOpt. "Alternative to" describes what it is for.
 
-## Features
+## Zones: automatic limits by place (free here)
 
-- **Charge limit with zones.** Pick a limit (and where charging resumes) for home, work, or anywhere else. BalDente
-  switches automatically by Wi-Fi network or saved place, and you can pin a zone by hand.
-- **Top Up and Travel mode.** Charge to 100% for a trip, then go back to your limit. Travel mode holds 100% for 24 hours.
-- **Ready by.** Tell it when you leave and how full you want to be; it times the charge. **Calendar Ready by** reads your
-  next timed event so it can do it for you.
-- **Heat Protection.** Pauses charging when the battery gets hot (30 to 60 °C, default 35 °C), with a thermometer you can
-  drag, click, or type into.
-- **Discharge and Calibration.** Drain to a target while plugged in, or run a full calibration cycle now, tonight, or
-  monthly.
-- **Low Power Mode** switch, a **battery history** page with health and cycle charts, and **health advice**.
-- **A menu bar icon that shows more.** A battery ring, network and volume in one icon, with a charging wave (speed is
-  adjustable), the percentage and time remaining beside it, and a status panel for Wi-Fi, Bluetooth and audio.
-- **Settings search** (⌘F), a compact layout, a Dock icon option and a command line tool.
+> **This is the feature other battery limiters usually put behind a paid upgrade. In BalDente it is free.**
+
+A **zone** is a charge limit that switches on by itself, based on where you are:
+
+- **By Wi-Fi network:** add your home, school or office networks to a zone and its limit applies the moment you connect.
+- **By saved place:** draw a circle on a map for places with no known Wi-Fi.
+- **Each zone has its own limit and resume level**, a name, an icon and its own background color.
+- **Out of the box BalDente limits charging to 50% at home** (it resumes at 45%), so a Mac that lives on its charger
+  stops wearing the battery. Add your home Wi-Fi to the **Home** zone and it happens automatically. The other starter zones are
+  **School** (100%), **Travel** (90%), and **Everywhere else** (80%) for anywhere that matches no zone.
+- Pin any zone by hand, or tap **Automatic** to let Wi-Fi and location decide again.
+- Create as many zones as you like, rename them, and back them up with **Export settings**.
+
+## One icon for battery, network and volume (a Status Trio alternative)
+
+BalDente's menu bar icon combines **battery, network and volume in a single icon**, the idea popularized by
+[Status Trio](https://github.com/lingyired/status-trio) by lingyired (Apache-2.0). BalDente's icon design and settings are modeled on it, drawn with BalDente's own code,
+and credited in [NOTICE](NOTICE). The difference is what's behind it: it is also your battery charge limiter, so **one app replaces both**,
+with a charging wave animation, percentage and time remaining beside the icon, and a status panel for Wi-Fi, Bluetooth and audio.
+(BalDente is not affiliated with Status Trio.)
+
+![The live menu bar preview](docs/images/menubar-preview.png)
+
+![Icon states: charging, charged on Ethernet, low battery, hotspot with Low Power Mode, weak Wi-Fi, no internet and muted, Wi-Fi off, Bluetooth audio](docs/images/menubar-states.png)
+
+Ring color shows the battery state, the middle shows your connection (Wi-Fi bars, Ethernet, hotspot, a Bluetooth device, or the percentage), and the
+four dots at the bottom are the volume.
+
+## All features
+
+**Charging control**
+- Charge limit with a separate resume level (hysteresis), applied by a small root helper through the SMC.
+- **Top Up to 100%** for a trip, then back to your zone's limit.
+- **Travel mode:** hold 100% for 24 hours, then return to normal.
+- **Ready by:** per-day schedule (days, leave time, target charge, optionally only in one zone). Charging is timed to
+  finish just as you leave, and the Mac wakes itself to start when needed.
+- **Calendar Ready by:** reads your next timed event (Calendar access, event start time only) and gets you full a set time before.
+- **Heat Protection:** pauses charging when the battery gets hot. Limit from 30 to 60 °C, default 35 °C, set with a thermometer
+  you can drag, click, or type into (↑ ↓ ← →, ⇧ for 5), with presets.
+- **Discharge** to a chosen level with the charger plugged in.
+- **Calibration:** drain to 15%, charge to 100%, rest an hour. Run now, at a chosen time tonight, or repeat on days of the month.
+- **Low Power Mode** switch.
+
+**Menu bar and Dock icon**
+- One combined icon: battery ring, network glyph and volume dots, in the menu bar, the Dock, or both.
+- Charging **wave and comet animation** (adjustable wave speed; stops with Reduce Motion), optional Dock animation, bolt pulse.
+- Percentage and **time remaining** as text beside the icon; the percentage stays visible while charging.
+- Ring colors by state (low is red, Low Power Mode is yellow, power is green), adjustable low-battery threshold and
+  "full" level (can follow your charge limit), icon size, stroke width, number and bolt size.
+- Middle slot shows Wi-Fi, Ethernet, hotspot, a Bluetooth audio device, the input source, or the percentage.
+- Live preview and a gallery of icon states in settings.
+
+**Status panel** (click the icon, or set a global shortcut)
+- Battery, Network, Bluetooth, Volume, plus optional Microphone, Input Source and VPN sections, reorderable and hideable.
+- Local IP address, Bluetooth device battery levels, a Bluetooth on/off switch, scroll to change volume (natural scrolling option),
+  output device list.
+
+**History and health**
+- Daily log of battery health and cycle count with charts, a **Battery Health Advisor** built from Apple's published figures
+  for your Mac model, and CSV export. Reset the log after a battery replacement.
+
+**Look and feel**
+- Background follows the active zone, or pick a preset, or choose your own colors; optional animation.
+- **Compact mode:** a dense standard Mac layout in a small window. The regular window resizes down to about 640 x 470.
+- **Search settings** with ⌘F: type a word and jump to (and highlight) the setting.
+- Launch at login, status refresh interval, smart notifications (battery health drops, a helper that stopped answering),
+  export and import all your settings, reset icon and panel settings.
+- Command line tool: `baldente status | limit <upper> <lower> | enable | disable`.
+
+**Free, open source, and private**
+- MIT licensed, no account, no tracking, no network access from the helper. Optional donations in the app (About, Overview) and below.
 
 ## Install
 
