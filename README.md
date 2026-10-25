@@ -22,7 +22,21 @@
 
 ![BalDente](docs/images/social-preview.png)
 
-<!-- Add screenshots here once captured: docs/images/overview.png, charging.png, zones.png, history.png -->
+## Screenshots
+
+<table>
+  <tr>
+    <td><img src="docs/images/overview.png" alt="Overview: battery ring, stats and quick controls"></td>
+    <td><img src="docs/images/charging.png" alt="Charging Tools: Ready by, thermometer heat limit, discharge and calibration"></td>
+  </tr>
+  <tr>
+    <td><img src="docs/images/zones.png" alt="Zones: charge limits that follow your Wi-Fi and saved places"></td>
+    <td><img src="docs/images/history.png" alt="Battery History: health advisor and charts"></td>
+  </tr>
+  <tr>
+    <td colspan="2"><img src="docs/images/battery-display.png" alt="Battery Display: live menu bar preview and charging effect settings"></td>
+  </tr>
+</table>
 
 ## Why BalDente?
 
