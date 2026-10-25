@@ -116,7 +116,7 @@ enum TrioRenderer {
         }
 
         let hi = highlight(for: fill)
-        if let f = frame { drawEffect(ctx, f, gap: gap, lw: lw, color: hi, progress: progress) }
+        if let f = frame { drawEffect(ctx, f, gap: gap, lw: lw, color: hi, base: fill, progress: progress) }
 
         let boltScale = p.boltPulse ? (frame?.boltScale ?? 1) : 1
         let boltColor = p.boltPulse ? blend(c.fg, hi, frame?.boltTint ?? 0) : c.fg
@@ -161,17 +161,19 @@ enum TrioRenderer {
         return b
     }
 
-    private static func drawEffect(_ ctx: CGContext, _ f: ChargingFrame, gap: CGFloat, lw: CGFloat, color: NSColor, progress: Double) {
+    private static func drawEffect(_ ctx: CGContext, _ f: ChargingFrame, gap: CGFloat, lw: CGFloat, color: NSColor, base: NSColor, progress: Double) {
         if progress > 0.03 {
             // A wave rippling along the filled arc: the ring swells and brightens as each crest passes.
-            let n = 30
+            // Troughs are noticeably darker and thinner than crests, so the motion reads even at menu bar size.
+            let n = 36
+            let trough = blend(base, NSColor.black, 0.45)
             ctx.setLineCap(.butt)
             for i in 0..<n {
                 let a = progress * Double(i) / Double(n), b = progress * Double(i + 1) / Double(n)
-                let w = 0.5 + 0.5 * sin(2 * .pi * (2.2 * (a + b) / 2 - f.wavePhase))
+                let w = 0.5 + 0.5 * sin(2 * .pi * (2.5 * (a + b) / 2 - f.wavePhase))
                 ctx.addPath(TrioGeometry.arc(from: a, to: b + 0.002, gap: gap))
-                ctx.setStrokeColor(color.withAlphaComponent(0.55 * w).cgColor)
-                ctx.setLineWidth(lw * (1 + 0.28 * w)); ctx.strokePath()
+                ctx.setStrokeColor(blend(trough, color, w).cgColor)
+                ctx.setLineWidth(lw * (0.78 + 0.5 * w)); ctx.strokePath()
             }
             ctx.setLineWidth(lw); ctx.setLineCap(.round)
         }
