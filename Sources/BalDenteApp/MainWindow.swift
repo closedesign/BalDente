@@ -6,6 +6,8 @@ import SwiftUI
 struct MainWindow: View {
     @ObservedObject var model: Model
     @FocusState private var searchFocused: Bool
+    /// A narrow window gets a slimmer sidebar so the page keeps its room.
+    @State private var narrow = false
 
     private var searching: Bool { !model.query.trimmingCharacters(in: .whitespaces).isEmpty }
 
@@ -18,6 +20,7 @@ struct MainWindow: View {
             }
         }
         .preferredColorScheme(.dark)
+        .onGeometryChange(for: Bool.self) { $0.size.width < 780 } action: { narrow = $0 }
         // ⌘F from anywhere in the window.
         .background(Button("") { searchFocused = true }.keyboardShortcut("f", modifiers: .command).opacity(0).allowsHitTesting(false))
     }
@@ -44,7 +47,7 @@ struct MainWindow: View {
             Text(versionLine).font(.caption2).foregroundStyle(.tertiary).padding(.horizontal, 10)
         }
         .padding(.horizontal, 12).padding(.top, 44).padding(.bottom, 14)
-        .frame(width: 236)
+        .frame(width: narrow ? 188 : 236)
         .frame(maxHeight: .infinity)
         .background(.ultraThinMaterial.opacity(0.7))
         .overlay(alignment: .trailing) { Rectangle().fill(.white.opacity(0.07)).frame(width: 1) }

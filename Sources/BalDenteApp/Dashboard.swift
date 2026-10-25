@@ -54,7 +54,7 @@ struct RootView: View {
         Group {
             if compact { CompactView(model: model) } else { MainWindow(model: model) }
         }
-        .frame(minWidth: compact ? 460 : 960, minHeight: compact ? 540 : 660)
+        .frame(minWidth: compact ? 380 : 620, minHeight: compact ? 420 : 440)
         .onAppear { WindowOpener.action = openWindow }
         .onChange(of: compact) { _, c in
             guard let w = NSApp.windows.first(where: { $0.canBecomeMain && $0.isVisible }) else { return }

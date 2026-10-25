@@ -35,9 +35,17 @@ struct OverviewPage: View {
     // MARK: Hero
 
     private var hero: some View {
-        HStack(spacing: 40) {
-            BatteryRing(percent: model.percent, lower: model.target.lower, upper: model.target.upper,
-                        caption: model.ringCaption, tint: model.accent, size: 250)
+        ViewThatFits(in: .horizontal) {
+            heroLayout(horizontal: true)
+            heroLayout(horizontal: false)
+        }
+    }
+
+    private func heroLayout(horizontal: Bool) -> some View {
+        let ring = BatteryRing(percent: model.percent, lower: model.target.lower, upper: model.target.upper,
+                               caption: model.ringCaption, tint: model.accent, size: horizontal ? 250 : 200)
+        return AnyLayout(horizontal ? AnyLayout(HStackLayout(spacing: 40)) : AnyLayout(VStackLayout(alignment: .leading, spacing: 20))) {
+            ring
             VStack(alignment: .leading, spacing: 10) {
                 Label(model.target.label.uppercased(), systemImage: model.topUp ? "bolt.fill" : "location.fill")
                     .font(.system(size: 11, weight: .bold, design: .rounded)).tracking(2)
@@ -51,7 +59,7 @@ struct OverviewPage: View {
                     }
                 }.padding(.top, 6)
             }
-            Spacer(minLength: 0)
+            if horizontal { Spacer(minLength: 0) }
         }
     }
 
@@ -76,7 +84,7 @@ struct OverviewPage: View {
     private var stats: some View {
         let i = model.info
         return GlassEffectContainer(spacing: 12) {
-            HStack(spacing: 12) {
+            LazyVGrid(columns: [GridItem(.adaptive(minimum: 130), spacing: 12)], spacing: 12) {
                 stat("Health", i?.healthPercent.map { "\($0)%" } ?? "–", "heart.fill")
                 stat("Cycles", i.map { "\($0.cycles)" } ?? "–", "arrow.triangle.2.circlepath")
                 stat("Temp", (status?.tempC ?? i?.tempC).map { String(format: "%.1f°", $0) } ?? "–", "thermometer.medium")
