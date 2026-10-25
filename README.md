@@ -69,7 +69,7 @@ and credited in [NOTICE](NOTICE). The difference is what's behind it: it is also
 with a charging wave animation, percentage and time remaining beside the icon, and a status panel for Wi-Fi, Bluetooth and audio.
 (BalDente is not affiliated with Status Trio.)
 
-![The live menu bar preview](docs/images/menubar-preview.png)
+![BalDente's live menu bar preview, laid out like the real macOS menu bar](docs/images/menubar-preview.png)
 
 ![Icon states: charging, charged on Ethernet, low battery, hotspot with Low Power Mode, weak Wi-Fi, no internet and muted, Wi-Fi off, Bluetooth audio](docs/images/menubar-states.png)
 

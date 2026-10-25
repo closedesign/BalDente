@@ -335,6 +335,13 @@ struct ValueSlider: View {
 
 /// The fake menu bar at the top of Settings, showing the real icon (animated while charging).
 struct IconPreviewCard: View {
+    /// "Sun Oct 25 16:46", the way the menu bar clock reads (day names follow the system language, 12 or 24 hour follows the system).
+    private static func clock(_ d: Date) -> String {
+        let day = DateFormatter(); day.dateFormat = "EEE MMM d"
+        let time = DateFormatter(); time.timeStyle = .short; time.dateStyle = .none
+        return day.string(from: d) + "  " + time.string(from: d)
+    }
+
     @ObservedObject var model: Model
     @ObservedObject var system: SystemMonitor
     @Binding var dark: Bool
@@ -343,28 +350,53 @@ struct IconPreviewCard: View {
         let s = model.statusController?.state ?? TrioState(power: system.effectivePower, net: system.net, audio: system.audio)
         let p = model.trio
         let animate = p.menuBarChargingEffect && s.power.charging && !s.power.charged && !system.reduceMotion
-        HStack(spacing: 14) {
-            Image(systemName: "apple.logo").font(.system(size: 16))
-            Text("Finder").font(.system(size: 15, weight: .bold))
-            Spacer()
-            TimelineView(.animation(minimumInterval: 1 / ChargingFrame.fps, paused: !animate)) { ctx in
-                let f = animate ? model.statusController?.currentFrame(
-                    gap: s.power.charging && p.showChargingIndicator ? TrioGeometry.boltGap * p.symbolScale : TrioGeometry.numberGap,
-                    boltInGap: s.power.charging && p.showChargingIndicator,
-                    progress: TrioRules.ringProgress(percent: s.power.percent, full: s.fullLevel)) : nil
-                let _ = ctx.date
-                Image(nsImage: TrioRenderer.image(s, p, size: p.iconSize * 1.5, frame: f, forceDark: dark))
+        let top = TrioRules.topIndicator(charging: s.power.charging, plugged: s.power.plugged, showPercentage: p.showPercentage,
+                                         showChargingIndicator: p.showChargingIndicator, percentageWhenConnected: p.percentageWhenConnected)
+        let side = TrioRules.sideText(present: s.power.present, percent: s.power.percent, plugged: s.power.plugged, charging: s.power.charging,
+                                      minutesToFull: s.power.minutesToFull, minutesToEmpty: s.power.minutesToEmpty, top: top,
+                                      showPercentWhileCharging: p.showPercentWhileCharging, showPercentage: p.showPercentage,
+                                      percentInMiddle: p.percentInMiddle, showTime: p.showTimeRemaining)
+        let iconSize = CGFloat(min(36, max(16, p.iconSize)))
+        VStack(alignment: .trailing, spacing: 6) {
+            // A faithful strip of the macOS menu bar: app menu on the left, status items and the clock on the right.
+            HStack(spacing: 0) {
+                // In a narrow window the menus drop out and only the app name stays, as in a crowded real menu bar.
+                ViewThatFits(in: .horizontal) {
+                    HStack(spacing: 18) {
+                        Image(systemName: "apple.logo").font(.system(size: 15))
+                        Text("BalDente").fontWeight(.bold)
+                        ForEach(["Edit", "View", "Charging", "Window", "Help"], id: \.self) { Text($0) }
+                    }
+                    HStack(spacing: 18) {
+                        Image(systemName: "apple.logo").font(.system(size: 15))
+                        Text("BalDente").fontWeight(.bold)
+                    }
+                }
+                .font(.system(size: 13)).lineLimit(1).fixedSize(horizontal: false, vertical: true)
+                Spacer(minLength: 16)
+                HStack(spacing: 14) {
+                    HStack(spacing: 4) {
+                        TimelineView(.animation(minimumInterval: 1 / ChargingFrame.fps, paused: !animate)) { ctx in
+                            let f = animate ? model.statusController?.currentFrame(
+                                gap: s.power.charging && p.showChargingIndicator ? TrioGeometry.boltGap * p.symbolScale : TrioGeometry.numberGap,
+                                boltInGap: s.power.charging && p.showChargingIndicator,
+                                progress: TrioRules.ringProgress(percent: s.power.percent, full: s.fullLevel)) : nil
+                            let _ = ctx.date
+                            Image(nsImage: TrioRenderer.image(s, p, size: iconSize, frame: f, forceDark: dark))
+                        }
+                        if !side.isEmpty { Text(side.trimmingCharacters(in: .whitespaces)).font(.system(size: 13)).monospacedDigit().lineLimit(1) }
+                    }
+                    Image(systemName: "switch.2").font(.system(size: 13))
+                    Text(Self.clock(Date.now)).font(.system(size: 13)).monospacedDigit().lineLimit(1).fixedSize()
+                }
             }
-            Image(systemName: "switch.2").font(.system(size: 14))
-            Text(Date.now, format: .dateTime.hour().minute()).font(.system(size: 15, weight: .medium)).monospacedDigit()
-            Button { dark.toggle() } label: { Label(dark ? "Dark" : "Light", systemImage: dark ? "moon.fill" : "sun.max.fill") }
-                .buttonStyle(.bordered).buttonBorderShape(.capsule).help("Toggle menu bar dark/light preview")
+            .foregroundStyle(dark ? Color.white : Color.black)
+            .padding(.horizontal, 14).frame(height: max(30, iconSize + 8))
+            .background(dark ? Color.black.opacity(0.72) : Color.white.opacity(0.72), in: .rect(cornerRadius: 8))
+            .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color.white.opacity(dark ? 0.10 : 0.35)))
+            Button { dark.toggle() } label: { Label(dark ? "Dark menu bar" : "Light menu bar", systemImage: dark ? "moon.fill" : "sun.max.fill").font(.caption) }
+                .buttonStyle(.borderless).foregroundStyle(.secondary).help("Toggle menu bar dark/light preview")
         }
-        .foregroundStyle(dark ? .white : .black)
-        .padding(.horizontal, 16).frame(height: 54)
-        .background(dark ? Color(white: 0.17) : Color(white: 0.92), in: .rect(cornerRadius: 14))
-        .overlay(RoundedRectangle(cornerRadius: 14).stroke(Color.primary.opacity(0.12)))
-        .environment(\.colorScheme, dark ? .dark : .light)
     }
 }
 

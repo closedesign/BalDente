@@ -1,6 +1,8 @@
 # Changelog
 
 ## 0.4 (unreleased)
+- The live preview in settings now looks like the real macOS menu bar (Apple menu, app menus, status icon with text, Control Center, clock).
+- The speed setting drives the whole charging animation (0.1x to 3x); the charging bolt is larger.
 - Donate buttons (Ko-fi, Buy Me a Coffee) on About, Overview and the compact layout.
 - The window resizes down to about 640 x 470.
 - Heat Protection: limit up to 60 °C, thermometer control with keyboard entry, default 35 °C.
