@@ -79,3 +79,30 @@ final class SideTextTests: XCTestCase {
     func testOptionsOff() { XCTAssertEqual(text(percentWhileCharging: false, time: false), "") }
     func testShortMinutes() { XCTAssertEqual(text(toFull: 9, percentWhileCharging: false), " 9m") }
 }
+
+final class WaveClockTests: XCTestCase {
+    func testChangingSpeedDoesNotJumpThePhase() {
+        var c = WaveClock(); let t0 = Date(timeIntervalSince1970: 1000)
+        _ = c.advance(now: t0, speed: 1, cycle: 1.8)
+        let before = c.advance(now: t0.addingTimeInterval(0.1), speed: 1, cycle: 1.8)
+        let after = c.advance(now: t0.addingTimeInterval(0.15), speed: 3, cycle: 1.8)
+        XCTAssertEqual(after - before, 0.05 * 3 / 1.8, accuracy: 1e-6)
+    }
+
+    func testFasterSpeedAdvancesFaster() {
+        func run(_ speed: Double) -> Double {
+            var c = WaveClock(); var p = 0.0
+            for i in 0...3 { p = c.advance(now: Date(timeIntervalSince1970: Double(i) * 0.1), speed: speed, cycle: 1.8) }
+            return p
+        }
+        XCTAssertGreaterThan(run(3), run(1))
+        XCTAssertGreaterThan(run(1), run(0.25))
+    }
+
+    func testLongGapAndBadSpeedAreSafe() {
+        var c = WaveClock()
+        _ = c.advance(now: Date(timeIntervalSince1970: 0), speed: 1, cycle: 1.8)
+        let p = c.advance(now: Date(timeIntervalSince1970: 3600), speed: .nan, cycle: 1.8)
+        XCTAssertLessThan(p, 0.25 / 1.8 + 1e-9)
+    }
+}

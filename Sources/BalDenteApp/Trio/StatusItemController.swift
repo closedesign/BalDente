@@ -146,6 +146,8 @@ final class StatusItemController: NSObject {
         }
     }
 
+    private var waveClock = WaveClock()
+
     private var chargingAnimates: Bool {
         let p = system.effectivePower
         return p.charging && !p.charged && !system.reduceMotion && !system.displayAsleep
@@ -180,8 +182,7 @@ final class StatusItemController: NSObject {
         }
         guard var f = ChargingFrame.at(progress: progress, t: t, cycle: cycle, gap: gap, boltInGap: boltInGap) else { return nil }
         // The wave runs on its own clock so its speed is independent of the comet and the plug-in burst.
-        let speed = min(3, max(0.25, model.trio.chargeWaveSpeed))
-        f.wavePhase = (now.timeIntervalSince(animationStart) * speed / ChargingFrame.steadyCycle).truncatingRemainder(dividingBy: 1)
+        f.wavePhase = waveClock.advance(now: now, speed: model.trio.chargeWaveSpeed, cycle: ChargingFrame.steadyCycle)
         return f
     }
 
