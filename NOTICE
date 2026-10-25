@@ -1,0 +1,9 @@
+BalDente
+Copyright (c) BalDente contributors. Licensed under the MIT License.
+
+The combined menu bar icon (battery arc, network glyph, volume dots), its settings and its
+charging animation are modeled on Status Trio by lingyired
+(https://github.com/lingyired/status-trio), licensed under the Apache License 2.0.
+The icon's layout coordinates (120-unit canvas, ring center, radius, sweep and the volume
+dot positions) are taken from Status Trio's status-menubar.svg. BalDente's drawing and
+animation code is its own.

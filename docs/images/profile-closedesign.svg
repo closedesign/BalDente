@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024" role="img" aria-label="closedesign profile picture">
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#ff6aa2"/>
+      <stop offset="0.5" stop-color="#a77bff"/>
+      <stop offset="1" stop-color="#00e0e0"/>
+    </linearGradient>
+  </defs>
+  <rect width="1024" height="1024" fill="#0d0f14"/>
+  <!-- sealed outer hexagon: no gaps, the "closed" counterpart to an open mark -->
+  <polygon points="512,212 771.8,362 771.8,662 512,812 252.2,662 252.2,362" fill="none" stroke="#fff" stroke-width="64" stroke-linejoin="round"/>
+  <!-- core -->
+  <polygon points="642,512 577,624.6 447,624.6 382,512 447,399.4 577,399.4" fill="url(#g)" stroke="url(#g)" stroke-width="24" stroke-linejoin="round"/>
+</svg>
