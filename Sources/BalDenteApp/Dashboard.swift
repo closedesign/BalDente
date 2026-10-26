@@ -385,7 +385,10 @@ struct ZoneEditor: View {
 
     var body: some View {
         if let i = index {
-            let z = $model.config.zones[i]
+            // Looked up by id on every access: after "Delete zone" a stale index would point past the end of the array.
+            let fallback = model.config.zones[i]
+            let z = Binding(get: { model.config.zones.first { $0.id == zoneID } ?? fallback },
+                            set: { v in if let j = model.config.zones.firstIndex(where: { $0.id == zoneID }) { model.config.zones[j] = v } })
             ScrollView {
                 VStack(alignment: .leading, spacing: 22) {
                     HStack {

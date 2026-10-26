@@ -195,4 +195,16 @@ public struct Status: Codable {
         self.percent = percent; self.adapterOn = adapterOn; self.state = state; self.backend = backend
         self.tempC = tempC; self.heatHold = heatHold; self.ledAvailable = ledAvailable
     }
+
+    // Tolerant like `LimiterState`: a helper that predates a field must not make the app think it's offline.
+    public init(from d: Decoder) throws {
+        let c = try d.container(keyedBy: CodingKeys.self)
+        percent = try c.decode(Int.self, forKey: .percent)
+        adapterOn = try c.decode(Bool.self, forKey: .adapterOn)
+        state = try c.decode(LimiterState.self, forKey: .state)
+        backend = try c.decodeIfPresent(String.self, forKey: .backend) ?? "unknown"
+        tempC = try c.decodeIfPresent(Double.self, forKey: .tempC)
+        heatHold = try c.decodeIfPresent(Bool.self, forKey: .heatHold) ?? false
+        ledAvailable = try c.decodeIfPresent(Bool.self, forKey: .ledAvailable)
+    }
 }

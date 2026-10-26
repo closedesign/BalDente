@@ -484,6 +484,11 @@ final class Model: NSObject, ObservableObject, CLLocationManagerDelegate, UNUser
         }
     }
 
+    nonisolated func userNotificationCenter(_ center: UNUserNotificationCenter, willPresent notification: UNNotification,
+                                            withCompletionHandler done: @escaping (UNNotificationPresentationOptions) -> Void) {
+        done([.banner, .list, .sound])
+    }
+
     /// The one way a change is announced: it always goes into Recent changes, and becomes a notification unless its category is muted.
     func announce(_ e: ChangeEvent) {
         activity.add(ActivityEntry(e, at: Date()))
@@ -593,6 +598,7 @@ final class Model: NSObject, ObservableObject, CLLocationManagerDelegate, UNUser
     }
 
     func exportHistory() {
+        guard FileManager.default.fileExists(atPath: Self.historyURL.path) else { setupError = "There's no history to export yet."; return }
         let p = NSSavePanel(); p.nameFieldStringValue = "BalDente-history.csv"; p.allowedContentTypes = [.commaSeparatedText]
         guard p.runModal() == .OK, let dest = p.url else { return }
         do { try? FileManager.default.removeItem(at: dest); try FileManager.default.copyItem(at: Self.historyURL, to: dest) }

@@ -425,14 +425,15 @@ struct IconPreviewCard: View {
                 Spacer(minLength: 16)
                 HStack(spacing: 14) {
                     HStack(spacing: 4) {
-                        TimelineView(.animation(minimumInterval: 1 / 12, paused: !animate)) { ctx in
-                            let f = animate ? model.statusController?.currentFrame(
+                        let still = TrioRenderer.image(s, p, size: iconSize, frame: nil, forceDark: dark)
+                        LiveIconView(still: still, animate: animate) { [weak controller = model.statusController] in
+                            let f = controller?.currentFrame(
                                 gap: s.power.charging && p.showChargingIndicator ? TrioGeometry.boltGap * p.symbolScale : TrioGeometry.numberGap,
                                 boltInGap: s.power.charging && p.showChargingIndicator,
-                                progress: TrioRules.ringProgress(percent: s.power.percent, full: s.fullLevel)) : nil
-                            let _ = ctx.date
-                            Image(nsImage: TrioRenderer.image(s, p, size: iconSize, frame: f, forceDark: dark))
+                                progress: TrioRules.ringProgress(percent: s.power.percent, full: s.fullLevel))
+                            return f.map { TrioRenderer.image(s, p, size: iconSize, frame: $0, forceDark: dark) }
                         }
+                        .frame(width: still.size.width, height: still.size.height)
                         if !side.isEmpty { Text(side.trimmingCharacters(in: .whitespaces)).font(.system(size: 13)).monospacedDigit().lineLimit(1) }
                     }
                     Image(systemName: "switch.2").font(.system(size: 13))
@@ -446,6 +447,71 @@ struct IconPreviewCard: View {
             Button { dark.toggle() } label: { Label(dark ? "Dark menu bar" : "Light menu bar", systemImage: dark ? "moon.fill" : "sun.max.fill").font(.caption) }
                 .buttonStyle(.borderless).foregroundStyle(.secondary).help("Toggle menu bar dark/light preview")
         }
+    }
+}
+
+/// The preview's icon, drawn into a layer outside SwiftUI. Swapping a SwiftUI `Image` 12 times a second made SwiftUI lay out
+/// the whole settings page (every card in the masonry) on each frame, about 40% of a core while charging. A fixed size and
+/// layer contents mean a new frame never touches layout. The timer only runs while the view is in a window and `animate` is on.
+struct LiveIconView: NSViewRepresentable {
+    let still: NSImage
+    let animate: Bool
+    let frame: () -> NSImage?
+
+    func makeNSView(context: Context) -> LiveIconNSView { LiveIconNSView() }
+    func updateNSView(_ v: LiveIconNSView, context: Context) { v.update(still: still, animate: animate, frame: frame) }
+    func sizeThatFits(_ proposal: ProposedViewSize, nsView: LiveIconNSView, context: Context) -> CGSize? { still.size }
+}
+
+final class LiveIconNSView: NSView {
+    private var still: NSImage?
+    private var draw: (() -> NSImage?)?
+    private var wantsAnimation = false
+    private var timer: Timer?
+
+    override init(frame: NSRect) {
+        super.init(frame: frame)
+        wantsLayer = true
+        layer?.contentsGravity = .resizeAspect
+    }
+    required init?(coder: NSCoder) { nil }
+
+    func update(still: NSImage, animate: Bool, frame: @escaping () -> NSImage?) {
+        self.still = still; draw = frame; wantsAnimation = animate
+        syncTimer()
+        if timer == nil { show(still) }
+    }
+
+    override func viewDidMoveToWindow() {
+        super.viewDidMoveToWindow()
+        syncTimer()
+    }
+
+    override func viewDidChangeBackingProperties() {
+        super.viewDidChangeBackingProperties()
+        layer?.contentsScale = window?.backingScaleFactor ?? 2
+    }
+
+    private func syncTimer() {
+        let want = wantsAnimation && window != nil
+        if want, timer == nil {
+            let t = Timer(timeInterval: 1 / 12, repeats: true) { [weak self] _ in MainActor.assumeIsolated { self?.tick() } }
+            t.tolerance = 0.02
+            RunLoop.main.add(t, forMode: .common)
+            timer = t
+        } else if !want, let t = timer {
+            t.invalidate(); timer = nil
+            show(still)
+        }
+    }
+
+    private func tick() { show(draw?() ?? still) }
+
+    private func show(_ image: NSImage?) {
+        CATransaction.begin(); CATransaction.setDisableActions(true)   // no implicit cross-fade between frames
+        layer?.contentsScale = window?.backingScaleFactor ?? 2
+        layer?.contents = image
+        CATransaction.commit()
     }
 }
 

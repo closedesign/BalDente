@@ -4,6 +4,14 @@
 BalDente stays on 0.x until: it is notarized, it has been tested on at least three Mac models and two macOS versions, it has had a week of daily use
 without a charging bug, and the helper installs, updates and uninstalls cleanly on a fresh account.
 
+## 0.11 (pre-release)
+- **Faster:** the live menu bar preview no longer redraws the whole settings page every frame while charging (about 40% of a core down to about 5%).
+- **Fix:** deleting a zone from its editor could crash the app.
+- **Fix:** notifications are now shown while the BalDente window is in front, instead of only landing in Recent changes.
+- **Fix:** installing an update can no longer leave you without an app if moving the new copy into place fails; the old one is put back.
+- **Fix:** Export history no longer offers to overwrite a file when there is no history to export yet.
+- **Fix:** the app reads status from older helpers that lack newer fields instead of reporting the helper as offline.
+
 ## 0.10 (pre-release)
 - **Text and buttons now adapt to the window:** setting rows move their control under the label when the window is narrow instead of squeezing the words into a column.
 - **Update downloads show a progress bar** with percent, size and speed, plus a Cancel button.

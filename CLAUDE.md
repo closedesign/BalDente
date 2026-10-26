@@ -76,6 +76,8 @@ There's no Xcode project — everything goes through `swift build`/`swift test` 
   blur and per-frame font creation in `TrioRenderer`. Network polling must not spawn processes every poll (`cachedGateway`).
 - Profile with `sample <pid> 5 -file out.txt` and `ps -o cputime= -p <pid>` deltas over 30 s, with the window closed and open, and with
   `BALDENTE_TEST_CHARGING=1` for the animation. Closing the window must not quit the app (`AppDelegate`).
+- Never swap a SwiftUI `Image` per frame inside a page: it re-lays out the whole page (every `MasonryLayout` card). Animated previews draw into
+  a fixed-size layer (`LiveIconView` in `TrioSettingsView.swift`); that change took the Icon page from ~40% to ~5% CPU while charging.
 - No new timers or polling. Use notifications/events that already arrive; piggyback on `Model.refreshStatus` (20 s) or
   the once-a-day log. The only fast timer is the charging animation (20 fps), which stops when not charging, the display
   sleeps, or Reduce Motion is on. Only touch `NSStatusBarButton` properties when the value changed.

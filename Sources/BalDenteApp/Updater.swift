@@ -22,8 +22,10 @@ enum UpdateInstaller {
         try await Task.detached {
             let p = Process(), out = Pipe()
             p.executableURL = URL(fileURLWithPath: tool); p.arguments = args; p.standardOutput = out; p.standardError = out
-            try p.run(); p.waitUntilExit()
+            try p.run()
+            // Read before waiting: a tool that fills the pipe buffer would otherwise block forever.
             let text = String(data: out.fileHandleForReading.readDataToEndOfFile(), encoding: .utf8) ?? ""
+            p.waitUntilExit()
             guard p.terminationStatus == 0 else { throw Failure(message: "\((tool as NSString).lastPathComponent) failed: \(text.prefix(120))") }
             return text
         }.value
@@ -59,7 +61,8 @@ enum UpdateInstaller {
         try fm.moveItem(at: tmp, to: image)
 
         status("Checking the download…")
-        try await run("/usr/bin/hdiutil", ["attach", "-nobrowse", "-readonly", "-noverify", "-mountpoint", mount.path, image.path])
+        do { try await run("/usr/bin/hdiutil", ["attach", "-nobrowse", "-readonly", "-noverify", "-mountpoint", mount.path, image.path]) }
+        catch { try? fm.removeItem(at: work); throw error }
         var mounted = true
         func detach() async { if mounted { mounted = false; _ = try? await run("/usr/bin/hdiutil", ["detach", "-force", mount.path]) } }
         do {
@@ -78,7 +81,11 @@ enum UpdateInstaller {
             // The swap happens after this process exits. Settings live in Application Support and UserDefaults, so they are untouched.
             let script = """
             while kill -0 \(ProcessInfo.processInfo.processIdentifier) 2>/dev/null; do sleep 0.3; done
-            rm -rf "\(target.path)" && mv "\(staged.path)" "\(target.path)" && open "\(target.path)"
+            # Move the old app aside first and put it back if the new one can't be moved in, so a failure never leaves no app.
+            if mv "\(target.path)" "\(work.path)/old.app"; then
+              mv "\(staged.path)" "\(target.path)" || mv "\(work.path)/old.app" "\(target.path)"
+            fi
+            open "\(target.path)"
             rm -rf "\(work.path)"
             """
             let p = Process()
