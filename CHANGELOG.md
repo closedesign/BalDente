@@ -4,6 +4,10 @@
 BalDente stays on 0.x until: it is notarized, it has been tested on at least three Mac models and two macOS versions, it has had a week of daily use
 without a charging bug, and the helper installs, updates and uninstalls cleanly on a fresh account.
 
+## 0.12 (pre-release)
+- **Fix:** the charging wave on the menu bar ring is now a single crest that travels along the filled arc and repeats, instead of several crests that made the two sides look like separate waves.
+- **Fix:** the ring keeps its normal green while charging; the wave no longer darkens it.
+
 ## 0.11 (pre-release)
 - **Faster:** the live menu bar preview no longer redraws the whole settings page every frame while charging (about 40% of a core down to about 5%).
 - **Fix:** deleting a zone from its editor could crash the app.

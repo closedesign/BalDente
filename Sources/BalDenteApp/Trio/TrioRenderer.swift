@@ -196,17 +196,22 @@ enum TrioRenderer {
 
     private static func drawEffect(_ ctx: CGContext, _ f: ChargingFrame, gap: CGFloat, lw: CGFloat, color: NSColor, base: NSColor, progress: Double) {
         if progress > 0.03 {
-            // A wave rippling along the filled arc: the ring swells and brightens as each crest passes.
-            // Troughs are noticeably darker and thinner than crests, so the motion reads even at menu bar size.
-            let n = 24
-            let trough = blend(base, NSColor.black, 0.45)
+            // One crest runs from the start of the filled arc to its end, then the cycle repeats. It enters and leaves
+            // past the ends so the loop is seamless. Only the crest is redrawn (brighter and slightly thicker) over the
+            // normal fill; there are no dark troughs.
+            let half = min(0.14, progress * 0.45)
+            let center = f.wavePhase * (progress + 2 * half) - half
+            let crest = blend(base, .white, 0.45)
+            let n = 40
             ctx.setLineCap(.butt)
             for i in 0..<n {
                 let a = progress * Double(i) / Double(n), b = progress * Double(i + 1) / Double(n)
-                let w = 0.5 + 0.5 * sin(2 * .pi * (2.5 * (a + b) / 2 - f.wavePhase))
+                let d = abs((a + b) / 2 - center)
+                guard d < half else { continue }
+                let w = 0.5 + 0.5 * cos(.pi * d / half)
                 ctx.addPath(TrioGeometry.arc(from: a, to: b + 0.002, gap: gap))
-                ctx.setStrokeColor(blend(trough, color, w).cgColor)
-                ctx.setLineWidth(lw * (0.78 + 0.5 * w)); ctx.strokePath()
+                ctx.setStrokeColor(blend(base, crest, w).cgColor)
+                ctx.setLineWidth(lw * (1 + 0.25 * w)); ctx.strokePath()
             }
             ctx.setLineWidth(lw); ctx.setLineCap(.round)
         }

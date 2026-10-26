@@ -115,7 +115,7 @@ four dots at the bottom are the volume.
 
 **Menu bar and Dock icon**
 - One combined icon: battery ring, network glyph and volume dots, in the menu bar, the Dock, or both.
-- Charging **wave and comet animation** (adjustable wave speed; stops with Reduce Motion), optional Dock animation, bolt pulse.
+- Charging **wave and comet animation** (one crest travels the ring per cycle) (adjustable wave speed; stops with Reduce Motion), optional Dock animation, bolt pulse.
 - Percentage and **time remaining** as text beside the icon; the percentage stays visible while charging.
 - Ring colors by state (low is red, Low Power Mode is yellow, power is green), adjustable low-battery threshold and
   "full" level (can follow your charge limit), icon size, stroke width, number and bolt size.
