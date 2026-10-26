@@ -289,6 +289,19 @@ final class StatusItemController: NSObject {
         let title = NSMenuItem(title: "BalDente \(v)", action: nil, keyEquivalent: ""); title.isEnabled = false
         m.addItem(title)
         m.addItem(.separator())
+        let status = NSMenuItem(title: "\(model.headline) · \(model.target.label) \(model.target.upper)%", action: nil, keyEquivalent: ""); status.isEnabled = false
+        m.addItem(status)
+        m.addItem(withTitle: model.topUp ? "Cancel Top Up" : "Top Up to 100%", action: #selector(menuTopUp), keyEquivalent: "").target = self
+        let zones = NSMenuItem(title: "Zone", action: nil, keyEquivalent: ""), sub = NSMenu()
+        let auto = sub.addItem(withTitle: "Automatic", action: #selector(menuPinZone(_:)), keyEquivalent: ""); auto.target = self
+        auto.state = model.config.overrideZone == nil ? .on : .off
+        for z in model.config.zones {
+            let i = sub.addItem(withTitle: "\(z.name) (\(z.upper)%)", action: #selector(menuPinZone(_:)), keyEquivalent: "")
+            i.target = self; i.representedObject = z.name; i.state = model.config.overrideZone == z.name ? .on : .off
+        }
+        zones.submenu = sub
+        m.addItem(zones)
+        m.addItem(.separator())
         m.addItem(withTitle: "Open Dashboard", action: #selector(openDashboard), keyEquivalent: "d").target = self
         m.addItem(withTitle: "Settings…", action: #selector(openSettings), keyEquivalent: ",").target = self
         m.addItem(.separator())
@@ -298,6 +311,8 @@ final class StatusItemController: NSObject {
         item?.menu = nil
     }
 
+    @objc private func menuTopUp() { model.toggleTopUp() }
+    @objc private func menuPinZone(_ i: NSMenuItem) { model.config.overrideZone = i.representedObject as? String }
     @objc func openDashboard() { popover.close(); model.go(.overview); WindowOpener.open("main") }
     @objc func openSettings() { popover.close(); model.go(.icon); WindowOpener.open("main") }
     func openReadyBy() { popover.close(); model.openReadyBy(); WindowOpener.open("main") }

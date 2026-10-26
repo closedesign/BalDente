@@ -11,6 +11,7 @@ struct HistoryPage: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 18) {
+          MasonryLayout(minColumn: 460) {
             if !loaded { ProgressView().controlSize(.small) } else { advisor }
             if loaded {
                 if points.count < 2 {
@@ -27,6 +28,7 @@ struct HistoryPage: View {
             }
             }
             if loaded && !points.isEmpty { manage }
+          }
             Text("Stored in ~/Library/Application Support/BalDente/daily-log.csv.")
                 .font(.caption).foregroundStyle(.secondary)
         }

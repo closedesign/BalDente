@@ -82,6 +82,12 @@ There's no Xcode project — everything goes through `swift build`/`swift test` 
 - Never talk to the daemon on the main thread: use `Model.cmd(_:)` / `refreshStatus()` (serial `daemonQueue`).
 - Don't change `baldented` unless necessary: any change forces users to reinstall the helper (password prompt).
 
+## Layout rules
+- `SettingRow` uses `RowControlLayout` (control beside the label, or under it when the label would get under 230pt); pages of cards use `MasonryLayout` (1-3 columns).
+  Rules live in Core (`RowLayoutRule`, `ColumnRule`) so they're tested. The window has no minimum size; the sidebar goes icon-only under 520pt.
+- The helper banner is a `safeAreaInset` on the page ScrollView. Stacked above it, the ScrollView's square clip edge cut into the banner's rounded glass.
+- Use `Color.primary` (not `.white`) for overlays so Light/Dark/System themes work.
+
 ## Gotchas
 - With the CHIE backend macOS keeps reporting "AC Power" while the charger is held off, so `power.plugged` is reliable;
   older keys report "Battery Power" when held (`Model.onBattery` handles both).

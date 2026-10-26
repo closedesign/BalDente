@@ -2,6 +2,18 @@ import AppKit
 import BalDenteCore
 
 /// Downloads a release DMG, checks it is really BalDente, and swaps it in after the app quits. Never runs unless the user clicks Install.
+/// Reports bytes downloaded and speed from the download task's callbacks.
+final class ProgressWatcher: NSObject, URLSessionDownloadDelegate, @unchecked Sendable {
+    private let report: (DownloadProgress?) -> Void
+    private let started = Date()
+    init(_ report: @escaping (DownloadProgress?) -> Void) { self.report = report }
+    func urlSession(_ session: URLSession, downloadTask: URLSessionDownloadTask, didWriteData bytesWritten: Int64,
+                    totalBytesWritten: Int64, totalBytesExpectedToWrite: Int64) {
+        report(DownloadProgress(written: totalBytesWritten, total: totalBytesExpectedToWrite, elapsed: Date().timeIntervalSince(started)))
+    }
+    func urlSession(_ session: URLSession, downloadTask: URLSessionDownloadTask, didFinishDownloadingTo location: URL) {}
+}
+
 enum UpdateInstaller {
     struct Failure: LocalizedError { let message: String; var errorDescription: String? { message } }
 
@@ -26,10 +38,18 @@ enum UpdateInstaller {
         return url
     }
 
-    static func install(dmg: URL, version: String, status: @escaping (String) -> Void) async throws {
+    static func install(dmg: URL, version: String, status: @escaping (String) -> Void, progress: @escaping (DownloadProgress?) -> Void = { _ in }) async throws {
         let target = try installTarget()
         status("Downloading \(version)…")
-        let (tmp, resp) = try await URLSession.shared.download(from: dmg)
+        progress(DownloadProgress(written: 0, total: nil, elapsed: 0))
+        let watcher = ProgressWatcher(progress)
+        let (tmp, resp): (URL, URLResponse)
+        do { (tmp, resp) = try await URLSession.shared.download(from: dmg, delegate: watcher) } catch {
+            progress(nil)
+            if error is CancellationError || (error as? URLError)?.code == .cancelled { throw Failure(message: "Download cancelled.") }
+            throw error
+        }
+        progress(nil)
         guard (resp as? HTTPURLResponse)?.statusCode == 200 else { throw Failure(message: "The download failed.") }
         let fm = FileManager.default
         let work = fm.temporaryDirectory.appendingPathComponent("baldente-update-\(UUID().uuidString)")

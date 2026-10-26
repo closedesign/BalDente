@@ -54,7 +54,7 @@ struct RootView: View {
         Group {
             if compact { CompactView(model: model) } else { MainWindow(model: model) }
         }
-        .frame(minWidth: compact ? 380 : 620, minHeight: compact ? 420 : 440)
+        .frame(minWidth: 0, minHeight: 0)   // no minimum: the window can be made as small as wanted
         // First run gets the tour; after an update, What's New. Closing either one counts as seen.
         .sheet(isPresented: Binding(get: { model.showTutorial }, set: { if !$0, model.showTutorial { model.finishTutorial() } })) {
             TutorialSheet(model: model)
@@ -93,7 +93,7 @@ struct DefaultTile: View {
         }
         .padding(18).frame(width: 210, height: 236, alignment: .topLeading)
         .contentShape(.rect(cornerRadius: 34))
-        .glassEffect(.regular.tint(.white.opacity(active ? 0.2 : 0.05)).interactive(), in: .rect(cornerRadius: 34))
+        .glassEffect(.regular.tint(Color.primary.opacity(active ? 0.2 : 0.05)).interactive(), in: .rect(cornerRadius: 34))
         .scaleEffect(hover ? 1.06 : 1)
         .animation(.spring(duration: 0.4, bounce: 0.3), value: hover)
         .onHover { hover = $0 }
@@ -142,13 +142,25 @@ struct BackgroundControls: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
-            AuroraBackground(palette: model.palette, animated: false)
+            AuroraBackground(palette: model.palette, animated: false, style: model.appearance.style)
                 .frame(height: 110).clipShape(.rect(cornerRadius: 22)).allowsHitTesting(false)
             Picker("Background", selection: Binding(get: { model.appearance.mode }, set: { model.appearance.mode = $0 })) {
                 Text("Follow zone").tag("zone")
                 Text("Preset").tag("preset")
                 Text("Custom").tag("custom")
             }.pickerStyle(.segmented).labelsHidden()
+            HStack {
+                Text("Theme").foregroundStyle(.secondary)
+                Picker("Theme", selection: Binding(get: { model.appearance.theme }, set: { model.appearance.theme = $0 })) {
+                    Text("Dark").tag("dark"); Text("Light").tag("light"); Text("System").tag("system")
+                }.pickerStyle(.segmented).labelsHidden()
+            }
+            HStack {
+                Text("Style").foregroundStyle(.secondary)
+                Picker("Style", selection: Binding(get: { model.appearance.style }, set: { model.appearance.style = $0 })) {
+                    ForEach(Theme.styles, id: \.id) { Text($0.name).tag($0.id) }
+                }.labelsHidden()
+            }
             switch model.appearance.mode {
             case "preset":
                 LazyVGrid(columns: [GridItem(.adaptive(minimum: 84), spacing: 12)], spacing: 12) {

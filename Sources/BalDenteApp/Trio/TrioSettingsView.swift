@@ -16,7 +16,7 @@ struct TrioPageView: View {
         VStack(alignment: .leading, spacing: 18) {
             IconPreviewCard(model: model, system: system, dark: $previewDark).tourAnchor("Menu bar preview")
             Text("Live preview. Changes below show up here and in your menu bar immediately.").font(.callout).foregroundStyle(.secondary)
-            content
+            MasonryLayout { content }
         }
     }
 
@@ -304,18 +304,65 @@ struct SettingRow<Control: View>: View {
     }
 
     var body: some View {
-        HStack(spacing: 14) {
-            Image(systemName: icon).font(.system(size: 15, weight: .semibold)).foregroundStyle(.white)
-                .frame(width: 34, height: 34).background(tint.gradient, in: .rect(cornerRadius: 8))
-            VStack(alignment: .leading, spacing: 2) {
-                Text(title).font(.body)
-                if let d = detail { Text(d).font(.callout).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true) }
+        // Wide windows keep the control on the right; narrow ones drop it under the text instead of squeezing the words.
+        RowControlLayout {
+            HStack(alignment: .top, spacing: 14) {
+                Image(systemName: icon).font(.system(size: 15, weight: .semibold)).foregroundStyle(.white)
+                    .frame(width: 34, height: 34).background(tint.gradient, in: .rect(cornerRadius: 8))
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(title).font(.body)
+                    if let d = detail { Text(d).font(.callout).foregroundStyle(.secondary) }
+                }
+                .fixedSize(horizontal: false, vertical: true)
+                .frame(maxWidth: .infinity, alignment: .leading)
             }
-            Spacer(minLength: 12)
             control
         }
         .padding(.vertical, 6)
         .settingAnchor(title)
+    }
+}
+
+/// Two children: the label block and its control. Side by side when the label keeps at least `minLead` points, otherwise stacked.
+struct RowControlLayout: Layout {
+    var minLead: CGFloat = 230
+    var gap: CGFloat = 12
+    var indent: CGFloat = 48
+    /// Center the control when stacked (the banner's button), instead of indenting it under the label.
+    var centerStacked = false
+
+    private func stacked(_ width: CGFloat, _ control: CGSize) -> Bool { RowLayoutRule.stacked(width: width, controlWidth: control.width, minLead: minLead, gap: gap) }
+
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
+        guard subviews.count == 2 else { return .zero }
+        let c = subviews[1].sizeThatFits(.unspecified)
+        let w = proposal.width ?? (minLead + gap + c.width)
+        if stacked(w, c) {
+            let lead = subviews[0].sizeThatFits(ProposedViewSize(width: w, height: nil))
+            let cw = min(c.width, w - indent)
+            let ch = subviews[1].sizeThatFits(ProposedViewSize(width: cw, height: nil)).height
+            return CGSize(width: w, height: lead.height + 8 + ch)
+        }
+        let lead = subviews[0].sizeThatFits(ProposedViewSize(width: w - c.width - gap, height: nil))
+        return CGSize(width: w, height: max(lead.height, c.height))
+    }
+
+    func placeSubviews(in b: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
+        guard subviews.count == 2 else { return }
+        let c = subviews[1].sizeThatFits(.unspecified)
+        if stacked(b.width, c) {
+            let lead = subviews[0].sizeThatFits(ProposedViewSize(width: b.width, height: nil))
+            subviews[0].place(at: b.origin, anchor: .topLeading, proposal: ProposedViewSize(width: b.width, height: lead.height))
+            let cw = min(c.width, b.width - indent)
+            let ch = subviews[1].sizeThatFits(ProposedViewSize(width: cw, height: nil)).height
+            subviews[1].place(at: CGPoint(x: centerStacked ? b.midX - cw / 2 : b.minX + indent, y: b.minY + lead.height + 8), anchor: .topLeading,
+                              proposal: ProposedViewSize(width: cw, height: ch))
+        } else {
+            let lw = b.width - c.width - gap
+            let lead = subviews[0].sizeThatFits(ProposedViewSize(width: lw, height: nil))
+            subviews[0].place(at: CGPoint(x: b.minX, y: b.midY), anchor: .leading, proposal: ProposedViewSize(width: lw, height: lead.height))
+            subviews[1].place(at: CGPoint(x: b.maxX, y: b.midY), anchor: .trailing, proposal: ProposedViewSize(width: c.width, height: c.height))
+        }
     }
 }
 

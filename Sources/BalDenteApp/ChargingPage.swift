@@ -104,9 +104,9 @@ struct ChargingPage: View {
                        set: { model.cmd("lowpower \($0 ? "on" : "off")") })).toggleStyle(.switch).disabled(status == nil)
                 Text("Asks macOS to reduce power use. Applies instantly.").font(.callout).foregroundStyle(.secondary)
             }
-            SleepCard(model: model)
-            ScheduleCard(model: model)
-            if model.status?.ledAvailable == true { LEDCard(model: model) }
+            SleepCard(model: model).modifier(HelperLock(model: model))
+            ScheduleCard(model: model).modifier(HelperLock(model: model))
+            if model.status?.ledAvailable == true { LEDCard(model: model).modifier(HelperLock(model: model)) }
         }
         .sheets(model, $sheet)
         .opensReadyBy(model, $sheet)
@@ -131,5 +131,6 @@ struct ChargingPage: View {
         .padding(18).frame(maxWidth: .infinity, minHeight: 150, alignment: .topLeading)
         .glassEffect(.regular.tint(tint.opacity(0.14)), in: .rect(cornerRadius: 26))
         .settingAnchor(title)
+        .modifier(HelperLock(model: model))
     }
 }

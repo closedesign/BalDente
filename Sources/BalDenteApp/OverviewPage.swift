@@ -16,16 +16,18 @@ struct OverviewPage: View {
             if let h = model.holdHintText { holdHint(h) }
             if let sug = model.habitSuggestion { habitCard(sug) }
             if let ns = model.networkSuggestion { NetworkSuggestionView(model: model, suggestion: ns, compact: false) }
-            stats
-            VStack(alignment: .leading, spacing: 12) {
-                header("Quick controls", "The things you reach for most. Open a card for the full settings.")
-                quickCards
+            MasonryLayout(minColumn: 440, spacing: 30) {
+                stats
+                VStack(alignment: .leading, spacing: 12) {
+                    header("Quick controls", "The things you reach for most. Open a card for the full settings.")
+                    quickCards
+                }
+                VStack(alignment: .leading, spacing: 4) {
+                    header("Zones", "Your limit follows your Wi-Fi and saved places. Tap a zone to pin it.")
+                    zoneRow
+                }
+                recentChanges
             }
-            VStack(alignment: .leading, spacing: 4) {
-                header("Zones", "Your limit follows your Wi-Fi and saved places. Tap a zone to pin it.")
-                zoneRow
-            }
-            recentChanges
             footer
         }
     }

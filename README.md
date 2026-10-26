@@ -140,7 +140,7 @@ four dots at the bottom are the volume.
   for your Mac model, and CSV export. Reset the log after a battery replacement.
 
 **Look and feel**
-- Background follows the active zone, or pick a preset, or choose your own colors; optional animation.
+- Background follows the active zone, or pick one of 20 color presets, or choose your own colors, in four styles (Aurora, Gradient, Spotlight, Midnight); optional animation; Light, Dark or System window theme.
 - **Compact mode:** a dense standard Mac layout in a small window. The regular window resizes down to about 640 x 470.
 - **Search settings** with ⌘F: type a word and jump to (and highlight) the setting.
 - Launch at login, status refresh interval, smart notifications (battery health drops),

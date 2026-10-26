@@ -48,7 +48,7 @@ struct AppearancePage: View {
     @ObservedObject var model: Model
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 18) {
+        MasonryLayout() {
             SettingsGroup("Background") { BackgroundControls(model: model) }
             SettingsGroup("Window") {
                 SettingRow("sparkles", .purple, "Animate the background",
@@ -77,7 +77,7 @@ struct GeneralPage: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 18) {
+        MasonryLayout() {
             SettingsGroup("Startup") {
                 SettingRow("power", .green, "Launch at login", "Start BalDente automatically when you log in.") {
                     Toggle("", isOn: Binding(get: { model.launchAtLogin }, set: { model.launchAtLogin = $0 })).labelsHidden().toggleStyle(.switch)
@@ -100,6 +100,23 @@ struct GeneralPage: View {
                 }
                 if let e = model.setupError { Text(e).font(.caption).foregroundStyle(.red).padding(.leading, 48) }
                 Text("Details and errors are logged to /var/log/baldente.log.").font(.caption).foregroundStyle(.secondary).padding(.leading, 48)
+            }
+            SettingsGroup("Settings file and support") {
+                SettingRow("square.and.arrow.up", .blue, "Export settings",
+                           "Save your zones, limits and appearance to a file. It includes Wi-Fi names and saved places, so keep it private.") {
+                    Button("Export…") { model.exportSettings() }.buttonStyle(.glass)
+                }
+                SettingRow("square.and.arrow.down", .green, "Import settings",
+                           "Load a settings file from another Mac. Your current settings are backed up first.") {
+                    Button("Import…") { model.importSettings() }.buttonStyle(.glass)
+                }
+                SettingRow("stethoscope", .pink, "Copy diagnostics",
+                           "Copies versions, helper state and recent changes for a bug report. No Wi-Fi names or places are included.") {
+                    Button("Copy") { model.copyDiagnostics() }.buttonStyle(.glass)
+                }
+                if !model.settingsFileMessage.isEmpty {
+                    Text(model.settingsFileMessage).font(.caption).foregroundStyle(.secondary).padding(.leading, 48)
+                }
             }
             SettingsGroup("Permissions") {
                 SettingRow("location.fill", .blue, "Location access",
@@ -194,7 +211,14 @@ struct AboutPage: View {
             ForEach(entries) { e in
                 DisclosureGroup(e.heading) {
                     VStack(alignment: .leading, spacing: 6) {
-                        ForEach(e.items, id: \.self) { Text("• " + $0).fixedSize(horizontal: false, vertical: true) }
+                        ForEach(e.items, id: \.self) { item in
+                            // LocalizedStringKey renders the changelog's **bold** and `code`; the hanging bullet keeps wrapped lines aligned.
+                            HStack(alignment: .firstTextBaseline, spacing: 8) {
+                                Text("•").foregroundStyle(.secondary)
+                                Text(LocalizedStringKey(item)).fixedSize(horizontal: false, vertical: true)
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                            }
+                        }
                     }.frame(maxWidth: .infinity, alignment: .leading).padding(.vertical, 4)
                 }
             }

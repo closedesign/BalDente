@@ -39,6 +39,23 @@ extension Theme {
         ("Ember", ["#FF5A36", "#FFB020", "#5B1A12"]),
         ("Rose", ["#FF7AA8", "#FFB3C7", "#6B2B49"]),
         ("Graphite", ["#7A8394", "#4B5563", "#161A22"]),
+        ("Lavender", ["#B79CFF", "#7FA8FF", "#2D2A66"]),
+        ("Mint", ["#7CF0C0", "#4FD6E0", "#0F4A4A"]),
+        ("Peach", ["#FFB38A", "#FF8FA3", "#6A2F3F"]),
+        ("Lagoon", ["#2EE6D6", "#2F8CFF", "#082F4A"]),
+        ("Crimson", ["#FF4D5E", "#C2185B", "#3A0B1E"]),
+        ("Gold", ["#FFD166", "#F4A261", "#4A2E0F"]),
+        ("Cherry Blossom", ["#FFC2E0", "#E58FD0", "#4B2A5E"]),
+        ("Northern Lights", ["#5CFFB0", "#6A7BFF", "#14264A"]),
+        ("Midnight Blue", ["#4D7CFF", "#2B3FA8", "#0A1030"]),
+        ("Lime", ["#C6F135", "#5BD66A", "#1B3D14"]),
+        ("Copper", ["#E07A4F", "#B5543C", "#2E1610"]),
+        ("Slate", ["#9AA5B8", "#6B7A90", "#1B2230"]),
+    ]
+
+    /// Background styles ("themes") that any palette can be shown in.
+    static let styles: [(id: String, name: String)] = [
+        ("aurora", "Aurora"), ("gradient", "Gradient"), ("spotlight", "Spotlight"), ("midnight", "Midnight"),
     ]
 
     static func preset(_ name: String) -> [Color] {
@@ -65,8 +82,36 @@ extension Color {
 struct AuroraBackground: View {
     let palette: [Color]
     var animated = true
+    var style = "aurora"
+    @Environment(\.colorScheme) private var scheme
+    private var light: Bool { scheme == .light }
+    private var base: Color { light ? Color(red: 0.93, green: 0.94, blue: 0.98) : Color(red: 0.03, green: 0.03, blue: 0.08) }
 
     var body: some View {
+        Group {
+            switch style {
+            case "gradient":
+                LinearGradient(colors: [palette[0].opacity(0.85), palette[1].opacity(0.7), palette[2]], startPoint: .topLeading, endPoint: .bottomTrailing)
+            case "spotlight":
+                ZStack {
+                    base
+                    RadialGradient(colors: [palette[0].opacity(0.75), palette[2].opacity(0.8), .clear], center: .topLeading, startRadius: 20, endRadius: 900)
+                    RadialGradient(colors: [palette[1].opacity(0.45), .clear], center: .bottomTrailing, startRadius: 10, endRadius: 600)
+                }
+            case "midnight":
+                ZStack {
+                    base
+                    RadialGradient(colors: [palette[2].opacity(0.9), .clear], center: .bottom, startRadius: 10, endRadius: 700)
+                    RadialGradient(colors: [palette[1].opacity(0.25), .clear], center: .topTrailing, startRadius: 10, endRadius: 500)
+                }
+            default: aurora
+            }
+        }
+        .overlay(light ? Color.white.opacity(0.3) : Color.black.opacity(style == "midnight" ? 0.1 : 0.22))
+        .ignoresSafeArea()
+    }
+
+    private var aurora: some View {
         // The drift runs as Core Animation layers (GPU, outside SwiftUI). Animating the mesh from a TimelineView re-evaluated the
         // whole window, glass cards included, on every frame and cost 25 to 50 percent of a core.
         ZStack {
@@ -75,12 +120,10 @@ struct AuroraBackground: View {
                          animated: animated && !ProcessInfo.processInfo.isLowPowerModeEnabled)
                 .opacity(0.55)
         }
-        .overlay(Color.black.opacity(0.22))
-        .ignoresSafeArea()
     }
 
     private var colors: [Color] {
-        let d = Color(red: 0.03, green: 0.03, blue: 0.08)
+        let d = base
         return [d, palette[2], d, palette[0], palette[1], palette[2], d, palette[0], d]
     }
 

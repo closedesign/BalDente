@@ -45,6 +45,8 @@ public struct Zone: Codable, Identifiable, Equatable {
 public struct Appearance: Codable, Equatable {
     public var mode = "zone"                       // zone | preset | custom
     public var preset = "Aurora"
+    public var theme = "dark"                      // dark | light | system
+    public var style = "aurora"                    // aurora | gradient | spotlight | midnight
     public var custom = ["#3A8CFF", "#1ACFD0", "#3A2FA6"]
     public var animated = true
     public var compact = false
@@ -54,6 +56,8 @@ public struct Appearance: Codable, Equatable {
         let c = try d.container(keyedBy: CodingKeys.self)
         mode = try c.decodeIfPresent(String.self, forKey: .mode) ?? mode
         preset = try c.decodeIfPresent(String.self, forKey: .preset) ?? preset
+        style = try c.decodeIfPresent(String.self, forKey: .style) ?? style
+        theme = try c.decodeIfPresent(String.self, forKey: .theme) ?? theme
         custom = try c.decodeIfPresent([String].self, forKey: .custom) ?? custom
         animated = try c.decodeIfPresent(Bool.self, forKey: .animated) ?? animated
         compact = try c.decodeIfPresent(Bool.self, forKey: .compact) ?? compact
@@ -87,6 +91,7 @@ public struct Config: Codable, Equatable {
         defaultLower = try c.decodeIfPresent(Int.self, forKey: .defaultLower) ?? defaultLower
         overrideZone = try c.decodeIfPresent(String.self, forKey: .overrideZone)
         appearance = try c.decodeIfPresent(Appearance.self, forKey: .appearance)
+        autoDischarge = try c.decodeIfPresent(Bool.self, forKey: .autoDischarge)
     }
 
     /// Makes imported or hand-edited limits something the helper accepts (it rejects upper outside 5...100 or lower >= upper),

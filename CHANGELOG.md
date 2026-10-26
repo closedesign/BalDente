@@ -4,6 +4,23 @@
 BalDente stays on 0.x until: it is notarized, it has been tested on at least three Mac models and two macOS versions, it has had a week of daily use
 without a charging bug, and the helper installs, updates and uninstalls cleanly on a fresh account.
 
+## 0.10 (pre-release)
+- **Text and buttons now adapt to the window:** setting rows move their control under the label when the window is narrow instead of squeezing the words into a column.
+- **Update downloads show a progress bar** with percent, size and speed, plus a Cancel button.
+- **The window can be any size:** no minimum. The sidebar shrinks, then turns into icons only (the magnifier or ⌘F expands it), and padding and titles scale with the width.
+- **Helper setup banner:** liquid glass again. It now scrolls with the page, so the page's square clip edge no longer cuts into it, and in small windows the button sits centered below the text.
+- **Wide windows use up to three columns** on Charging Tools, General, Appearance and the menu bar pages (and the page width limit is higher).
+- **Helper banner stays pinned** at the top while the page scrolls under it, and when the helper isn't installed it now says so plainly and lists what won't work.
+- **Light, Dark or System window theme** (Appearance → Background).
+- **Overview and History use the width:** cards flow into up to three columns in wide windows.
+- **"Install helper" button** on each charging card while the helper isn't running, so greyed-out controls explain themselves.
+- **Menu bar quick menu:** right-click the icon to Top Up or pin a zone.
+- **Settings export/import and a diagnostics report** (General → Settings file and support).
+- **The window remembers its size, position and last page.**
+- **Fixed:** Automatic Discharge forgot its on/off setting after a restart.
+- **What's New formatting:** bold and code render properly, with aligned bullets.
+- **More backgrounds:** 12 new color presets (20 in all) and four background styles: Aurora, Gradient, Spotlight and Midnight (Appearance → Background).
+
 ## 0.9 (pre-release)
 - **Update the helper after installing this version** (General → Charging helper → Update). New helper features need it; the new controls stay greyed out until then.
 - **Schedule:** run Top Up, Discharge, Calibration or Low Power Mode on a schedule (once, daily, weekdays, weekly, every two weeks, monthly, yearly), with "catch up if the Mac was asleep" and a task history. A limit is not a task: zones set the limit.

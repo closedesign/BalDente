@@ -22,6 +22,24 @@ struct UpdatesSection: View {
                     Button("Check now") { model.checkForUpdates(manual: true) }.buttonStyle(.glass).disabled(model.checkingUpdates || model.installingUpdate)
                 }
             }
+            if model.installingUpdate {
+                HStack(alignment: .top, spacing: 12) {
+                    VStack(alignment: .leading, spacing: 4) {
+                        if let p = model.updateProgress {
+                            if let f = p.fraction { ProgressView(value: f) } else { ProgressView().progressViewStyle(.linear) }
+                            Text(p.label).font(.caption.monospacedDigit()).foregroundStyle(.secondary)
+                        } else {
+                            ProgressView().progressViewStyle(.linear)
+                            Text(model.updateStatus).font(.caption).foregroundStyle(.secondary)
+                        }
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    if model.updateProgress != nil {
+                        Button("Cancel") { model.cancelUpdateDownload() }.buttonStyle(.glass)
+                    }
+                }
+                .padding(.vertical, 4)
+            }
             if !model.settingsCheck.isEmpty {
                 Label(model.settingsCheck, systemImage: model.settingsCheck.hasPrefix("Checked") ? "checkmark.shield.fill" : "exclamationmark.triangle.fill")
                     .foregroundStyle(model.settingsCheck.hasPrefix("Checked") ? .green : .orange)

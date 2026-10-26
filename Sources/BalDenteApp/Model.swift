@@ -43,7 +43,11 @@ final class Model: NSObject, ObservableObject, CLLocationManagerDelegate, UNUser
     @Published var trio = TrioPrefs.load() { didSet { if trio != oldValue { trio.save() } } }
     @Published var panelOpen = false
     /// Which page of the main window is showing, what's typed in its search box, and the setting to flash after a search jump.
-    @Published var page = SettingsPage.overview
+    /// Where the window opens: the page it was on last time.
+    @Published var page = SettingsPage(rawValue: UserDefaults.standard.string(forKey: "lastPage") ?? "") ?? .overview {
+        didSet { UserDefaults.standard.set(page.rawValue, forKey: "lastPage") }
+    }
+    @Published var settingsFileMessage = ""
     /// Set by Overview's Ready by card so the Charging page opens the editor straight away (one click, not two).
     @Published var readyByRequested = false
     @Published var query = ""
@@ -92,6 +96,9 @@ final class Model: NSObject, ObservableObject, CLLocationManagerDelegate, UNUser
     @Published private(set) var checkingUpdates = false
 
     @Published private(set) var installingUpdate = false
+    /// 0...1 while the update downloads; nil otherwise.
+    @Published private(set) var updateProgress: DownloadProgress?
+    private var updateTask: Task<Void, Never>?
     /// What the check after the last update found, in words. Empty until an update has happened.
     @Published private(set) var settingsCheck = ""
     @Published private(set) var backups: [BackupInfo] = []
@@ -100,13 +107,18 @@ final class Model: NSObject, ObservableObject, CLLocationManagerDelegate, UNUser
     private var verifyAgainst: SettingsFingerprint?
     private static let fingerprintKey = "lastSettingsFingerprint"
 
+    /// Stops a download in progress; nothing was installed yet, so there is nothing to undo.
+    func cancelUpdateDownload() { if updateProgress != nil { updateTask?.cancel() } }
+
     func installUpdate() {
         guard let u = availableUpdate, let dmg = u.dmg, !installingUpdate else { return }
         installingUpdate = true
-        Task {
-            do { try await UpdateInstaller.install(dmg: dmg, version: u.version) { [weak self] in self?.updateStatus = $0 } }
+        updateTask = Task {
+            do { try await UpdateInstaller.install(dmg: dmg, version: u.version) { [weak self] t in Task { @MainActor in self?.updateStatus = t } }
+                progress: { [weak self] f in Task { @MainActor in self?.updateProgress = f } } }
             catch {
                 installingUpdate = false
+                updateProgress = nil
                 updateStatus = (error as? UpdateInstaller.Failure)?.message ?? "The update couldn't be installed. Download it instead."
             }
         }
@@ -540,6 +552,44 @@ final class Model: NSObject, ObservableObject, CLLocationManagerDelegate, UNUser
         let d = UserDefaults.standard
         for k in ["lastLogDay", "healthBaseline", "healthBaselineDate"] { d.removeObject(forKey: k) }
         sideEffects()
+    }
+
+    // MARK: Settings file and diagnostics
+
+    func exportSettings() {
+        let p = NSSavePanel(); p.nameFieldStringValue = "BalDente-settings.json"; p.allowedContentTypes = [.json]
+        guard p.runModal() == .OK, let dest = p.url else { return }
+        do { try SettingsExport.encode(config, version: appVersionText).write(to: dest, options: .atomic); settingsFileMessage = "Saved to \(dest.lastPathComponent)." }
+        catch { settingsFileMessage = "Couldn't save: \(error.localizedDescription)" }
+    }
+
+    /// Replaces zones, limits and appearance with a saved file's. The current settings are copied to the backups list first.
+    func importSettings() {
+        let p = NSOpenPanel(); p.allowedContentTypes = [.json]; p.allowsMultipleSelection = false
+        guard p.runModal() == .OK, let src = p.url else { return }
+        do {
+            let imported = try SettingsExport.decode(Data(contentsOf: src))
+            if let data = try? Data(contentsOf: Config.url) { backupStore.save(data, version: "before-import"); backups = backupStore.list() }
+            config = imported
+            settingsFileMessage = "Loaded \(imported.zones.count) zones from \(src.lastPathComponent)."
+        } catch { settingsFileMessage = (error as? SettingsExport.Failure)?.message ?? "Couldn't read that file: \(error.localizedDescription)" }
+    }
+
+    var diagnostics: DiagnosticsInfo {
+        let t = target
+        return DiagnosticsInfo(
+            appVersion: appVersionText, macOS: ProcessInfo.processInfo.operatingSystemVersionString,
+            mac: "\(mac.productName) (\(mac.modelID), \(mac.appleSilicon ? "Apple silicon" : "Intel"))",
+            helper: status != nil ? (helperOutdated ? "update available" : "running") : helperInstalled ? "not responding" : "not installed",
+            backend: status?.backend, percent: status?.percent, tempC: status?.tempC,
+            limit: "\(t.upper)% / \(t.lower)% (\(t.label))", zoneCount: config.zones.count, heatProtection: status?.state.heatProtection,
+            recent: activity.entries.prefix(10).map { $0.title }, lastError: setupError)
+    }
+
+    func copyDiagnostics() {
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.setString(diagnostics.report, forType: .string)
+        settingsFileMessage = "Diagnostics copied. Paste them into your bug report."
     }
 
     func exportHistory() {
