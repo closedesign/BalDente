@@ -12,6 +12,7 @@ final class Model: NSObject, ObservableObject, CLLocationManagerDelegate, UNUser
     @Published var config = Config.load() {
         didSet {
             fixOverride(old: oldValue)
+            verifyAgainst = nil     // the user edited settings; a before/after comparison would be misleading
             config.save()
             if oldValue.zones.map(\.place) != config.zones.map(\.place) { syncRegions() }
             if networkSuggestion != nil, oldValue.zones.map(\.networks) != config.zones.map(\.networks) { evaluateNetworkHint() }
@@ -88,6 +89,60 @@ final class Model: NSObject, ObservableObject, CLLocationManagerDelegate, UNUser
     @Published private(set) var updateStatus = ""
     @Published private(set) var availableUpdate: UpdateCheck.Release?
     @Published private(set) var checkingUpdates = false
+
+    @Published private(set) var installingUpdate = false
+    /// What the check after the last update found, in words. Empty until an update has happened.
+    @Published private(set) var settingsCheck = ""
+    @Published private(set) var backups: [BackupInfo] = []
+    private let backupStore = BackupStore()
+    /// Settings as the previous version left them; compared once the helper answers after an update.
+    private var verifyAgainst: SettingsFingerprint?
+    private static let fingerprintKey = "lastSettingsFingerprint"
+
+    func installUpdate() {
+        guard let u = availableUpdate, let dmg = u.dmg, !installingUpdate else { return }
+        installingUpdate = true
+        Task {
+            do { try await UpdateInstaller.install(dmg: dmg, version: u.version) { [weak self] in self?.updateStatus = $0 } }
+            catch {
+                installingUpdate = false
+                updateStatus = (error as? UpdateInstaller.Failure)?.message ?? "The update couldn't be installed. Download it instead."
+            }
+        }
+    }
+
+    /// Called when the app version changes: keep a copy of the settings and remember what they were.
+    private func beginUpdateVerification() {
+        if let data = try? Data(contentsOf: Config.url) { backupStore.save(data, version: UserDefaults.standard.string(forKey: "lastVersionSeen") ?? "older") }
+        backups = backupStore.list()
+        verifyAgainst = UserDefaults.standard.data(forKey: Self.fingerprintKey).flatMap { try? JSONDecoder().decode(SettingsFingerprint.self, from: $0) }
+    }
+
+    /// Runs on every status update; cheap (a struct compare), writes only when something changed.
+    private func trackSettings() {
+        guard let s = status, s.backend != "demo" else { return }
+        let now = SettingsFingerprint(config: config, readyBy: s.state.chargeSchedule)
+        if let before = verifyAgainst {
+            verifyAgainst = nil
+            let diff = before.differences(to: now)
+            if diff.isEmpty { settingsCheck = "Checked after the update: your zones, limits and Ready by are unchanged." }
+            else {
+                settingsCheck = "After the update these differ from before: " + diff.joined(separator: ", ") + ". A backup of the earlier settings is below."
+                notify("Settings changed after update", settingsCheck)
+            }
+        }
+        if let d = try? JSONEncoder().encode(now), d != UserDefaults.standard.data(forKey: Self.fingerprintKey) {
+            UserDefaults.standard.set(d, forKey: Self.fingerprintKey)
+        }
+    }
+
+    func restoreBackup(_ b: BackupInfo) {
+        guard let restored = backupStore.load(b) else { setupError = "That backup can't be read."; return }
+        if let data = try? Data(contentsOf: Config.url) { backupStore.save(data, version: "before-restore") }
+        verifyAgainst = nil
+        config = restored
+        backups = backupStore.list()
+    }
 
     func checkForUpdates(manual: Bool) {
         let d = UserDefaults.standard
@@ -169,6 +224,7 @@ final class Model: NSObject, ObservableObject, CLLocationManagerDelegate, UNUser
             Task { @MainActor in self?.refreshStatus() }
         }
         timer?.tolerance = 5      // lets macOS batch our wakeups with others
+        backups = backupStore.list()
         checkForUpdates(manual: false)
         syncRegions()
         scheduleNetworkRefresh()
@@ -354,6 +410,7 @@ final class Model: NSObject, ObservableObject, CLLocationManagerDelegate, UNUser
             pendingUnplug = nil
             if onBattery { recordHabit(HabitEvent(date: at, kind: .unplug)) }
         }
+        trackSettings()
         smartChecks()
         sideEffects()
         if !habitsChecked, status != nil { habitsChecked = true; evaluateHabits(); evaluateNetworkHint() }
@@ -627,6 +684,7 @@ final class Model: NSObject, ObservableObject, CLLocationManagerDelegate, UNUser
            let text = try? String(contentsOf: url, encoding: .utf8) {
             whatsNew = WhatsNew.items(for: version, in: text)
         }
+        if !firstLaunch, version != "dev", d.string(forKey: "lastVersionSeen") != version { beginUpdateVerification() }
         // Remember the version now unless there's a sheet to show; then it's remembered when the sheet is closed.
         if whatsNew == nil, version != "dev" { d.set(version, forKey: "lastVersionSeen") }
     }

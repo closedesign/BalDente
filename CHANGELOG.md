@@ -4,6 +4,11 @@
 BalDente stays on 0.x until: it is notarized, it has been tested on at least three Mac models and two macOS versions, it has had a week of daily use
 without a charging bug, and the helper installs, updates and uninstalls cleanly on a fresh account.
 
+## 0.8 (pre-release)
+- Updates moved to About. When a release has a BalDente.dmg attached, "Install" downloads it, checks it is BalDente at that version and correctly signed, then replaces the app and reopens it. No DMG on the release: a link to the release page instead.
+- After an update BalDente checks that your zones, limits and Ready by match what the old version left, and says so (or what differs).
+- Settings backups: a copy of your zones and limits is kept at every version change and before a restore (last five), with a Restore button in About.
+
 ## 0.7 (pre-release)
 - What's New in About lists the changes of every version.
 - Update check: General has a "Check for updates now" button and an automatic daily check (one request to GitHub, on by default, can be turned off). It only tells you; nothing installs itself.

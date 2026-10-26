@@ -95,6 +95,11 @@ There's no Xcode project — everything goes through `swift build`/`swift test` 
 - The Overview ring's markers are draggable (`BatteryRing.onLimitsChange`, math in `BalDenteCore/RingDrag.swift`); it commits once on release via `Model.setTargetLimits`.
 - Habit unplugs are confirmed after a fresh status (`pendingUnplug`): with older SMC keys a held charger also reads as unplugged.
 
+## Updates
+- `UpdateCheck` (Core) parses GitHub releases; `UpdatesView`/`Updater.swift` (App) show it in About and do the install swap. Install only works when a release has a
+  `BalDente.dmg` asset from `closedesign/BalDente` (attach `dist/BalDente.dmg` when publishing). Settings never live in the bundle, so replacing it is safe.
+- Keep every persisted type decoding with `decodeIfPresent` defaults; `SettingsBackup.swift` snapshots config per version and `trackSettings` verifies after an update.
+
 ## Battery data
 - Health % = `NominalChargeCapacity / DesignCapacity` (what System Settings shows; `FullChargeCapacity` reads ~2 points lower). Legacy keys are fallbacks only.
 - `daily-log.csv` is one row per day; `HealthHistory.parse` keeps the last row of any duplicated day. `Model.resetHistory()` also clears the

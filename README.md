@@ -139,6 +139,8 @@ four dots at the bottom are the volume.
 
 **Updates**
 - **Check for updates** button in General plus an optional daily automatic check (one request to GitHub; it only tells you, never installs).
+  **Install** (when the release has a DMG) downloads, verifies and swaps the app for you. After an update it confirms your settings
+  are unchanged, and keeps the last five settings backups with a Restore button, all under About.
   Updating keeps your zones, limits, Ready by and appearance. **What's New** under About lists the changes in every version.
 
 **Free, open source, and private**

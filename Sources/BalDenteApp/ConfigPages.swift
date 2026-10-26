@@ -135,17 +135,6 @@ struct GeneralPage: View {
                     Button("Clear") { model.clearHabits() }.buttonStyle(.glass)
                 }
             }
-            SettingsGroup("Updates") {
-                SettingRow("arrow.down.circle.fill", .green, "Check for updates automatically", "Looks for a new BalDente release on GitHub about once a day. It only tells you; your settings are never touched.") {
-                    Toggle("", isOn: Binding(get: { model.autoUpdateCheck }, set: { model.autoUpdateCheck = $0 })).labelsHidden().toggleStyle(.switch)
-                }
-                SettingRow("arrow.triangle.2.circlepath", .blue, "Check for updates now", model.updateStatus.isEmpty ? "See whether a newer version is out." : model.updateStatus) {
-                    HStack {
-                        if let u = model.availableUpdate { Link("Download \(u.version)", destination: u.page) }
-                        Button("Check now") { model.checkForUpdates(manual: true) }.buttonStyle(.glass).disabled(model.checkingUpdates)
-                    }
-                }
-            }
             SettingsGroup("Help") {
                 SettingRow("graduationcap.fill", .blue, "Show tutorial again", "The short tour of limits, zones, Ready by, heat protection and the menu bar icon.") {
                     Button("Show") { model.showTutorial = true }.buttonStyle(.glass)
@@ -194,6 +183,7 @@ struct AboutPage: View {
                 .fixedSize(horizontal: false, vertical: true)
             DonateButtons().padding(.top, 4)
         }
+        UpdatesSection(model: model)
         SettingsGroup("What's New") {
             let entries = WhatsNew.allEntries(in: (Bundle.main.url(forResource: "CHANGELOG", withExtension: "md")
                 .flatMap { try? String(contentsOf: $0, encoding: .utf8) }) ?? "")
