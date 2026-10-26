@@ -12,6 +12,9 @@ struct OverviewPage: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 30) {
             hero
+            if let h = model.holdHintText { holdHint(h) }
+            if let sug = model.habitSuggestion { habitCard(sug) }
+            if let ns = model.networkSuggestion { NetworkSuggestionView(model: model, suggestion: ns, compact: false) }
             stats
             VStack(alignment: .leading, spacing: 12) {
                 header("Quick controls", "The things you reach for most. Open a card for the full settings.")
@@ -21,6 +24,7 @@ struct OverviewPage: View {
                 header("Zones", "Your limit follows your Wi-Fi and saved places. Tap a zone to pin it.")
                 zoneRow
             }
+            recentChanges
             footer
         }
     }
@@ -43,9 +47,10 @@ struct OverviewPage: View {
 
     private func heroLayout(horizontal: Bool) -> some View {
         let ring = BatteryRing(percent: model.percent, lower: model.target.lower, upper: model.target.upper,
-                               caption: model.ringCaption, tint: model.accent, size: horizontal ? 250 : 200)
+                               caption: model.ringCaption, tint: model.accent, size: horizontal ? 250 : 200,
+                               onLimitsChange: model.ringEditable ? { model.setTargetLimits(upper: $0, lower: $1) } : nil)
         return AnyLayout(horizontal ? AnyLayout(HStackLayout(spacing: 40)) : AnyLayout(VStackLayout(alignment: .leading, spacing: 20))) {
-            ring
+            ring.id("Charge ring").tourAnchor("Charge ring")
             VStack(alignment: .leading, spacing: 10) {
                 Label(model.target.label.uppercased(), systemImage: model.topUp ? "bolt.fill" : "location.fill")
                     .font(.system(size: 11, weight: .bold, design: .rounded)).tracking(2)
@@ -64,7 +69,7 @@ struct OverviewPage: View {
     }
 
     @ViewBuilder private var heroButtons: some View {
-        Button { model.topUp.toggle(); model.refresh() } label: {
+        Button { model.toggleTopUp() } label: {
             pill(model.topUp ? "Cancel Top Up" : "Top Up to 100%", "bolt.fill")
         }
         .buttonStyle(.glassProminent).tint(model.accent).settingAnchor("Top Up")
@@ -77,6 +82,89 @@ struct OverviewPage: View {
         }
         .buttonStyle(.glass).tint(model.config.overrideZone == nil ? model.accent : nil)
         .disabled(model.config.overrideZone == nil).settingAnchor("Automatic")
+    }
+
+    // MARK: Hint and suggestion
+
+    /// "Holding at 50% (Home zone). Need a full battery?" with the two ways to get one. Retires after a few uses or a dismiss.
+    private func holdHint(_ text: String) -> some View {
+        HStack(spacing: 12) {
+            Image(systemName: "info.circle.fill").foregroundStyle(model.accent)
+            Text(text).font(.callout).fixedSize(horizontal: false, vertical: true)
+            Spacer(minLength: 8)
+            // Same prominent glass as the hero's Top Up, so the two ways out of the limit read as real buttons.
+            Button { model.toggleTopUp() } label: { pill("Top Up now", "bolt.fill") }
+                .buttonStyle(.glassProminent).tint(model.accent)
+            Button { model.openReadyBy() } label: { pill("Set Ready by", "alarm.fill") }
+                .buttonStyle(.glassProminent).tint(.orange).disabled(model.calendar.enabled)
+            Button { model.holdHint.dismissed = true } label: { Image(systemName: "xmark").font(.callout.weight(.semibold)) }
+                .buttonStyle(.glass).buttonBorderShape(.circle).help("Don't show this again")
+        }
+        .padding(.leading, 18).padding(.trailing, 10).padding(.vertical, 10)
+        .glassEffect(.regular.tint(model.accent.opacity(0.18)), in: .rect(cornerRadius: 22))
+        .settingAnchor("Holding hint")
+    }
+
+    private func habitCard(_ sug: HabitSuggestion) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Label("A charge plan for your routine", systemImage: "sparkles").font(.system(.headline, design: .rounded))
+            Text(sug.question).fixedSize(horizontal: false, vertical: true)
+            Text("Learned on this Mac from when you unplug. Nothing changes unless you accept; it sets up Ready by, which you can edit any time.")
+                .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+            HStack(spacing: 10) {
+                Button { model.acceptHabit() } label: { pill("Accept", "checkmark") }.buttonStyle(.glassProminent).tint(.orange)
+                Button("Not now") { model.snoozeHabit() }.buttonStyle(.glass)
+                Button("Don't suggest this again") { model.dismissHabit() }.buttonStyle(.glass)
+            }
+        }
+        .padding(18).frame(maxWidth: .infinity, alignment: .leading)
+        .glassEffect(.regular.tint(.orange.opacity(0.16)), in: .rect(cornerRadius: 24))
+        .settingAnchor("Habit suggestions")
+    }
+
+    // MARK: Recent changes
+
+    @State private var showAllChanges = false
+
+    private var recentChanges: some View {
+        let all = model.activity.entries
+        let shown = showAllChanges ? all : Array(all.prefix(6))
+        return VStack(alignment: .leading, spacing: 12) {
+            HStack(alignment: .firstTextBaseline) {
+                header("Recent changes", "What BalDente changed about charging, when, and why.")
+                Spacer()
+                if !all.isEmpty { Button("Clear") { model.clearActivity() }.buttonStyle(.glass).controlSize(.small) }
+            }
+            if all.isEmpty {
+                Text("Nothing yet. Zone switches, top-ups, heat pauses and helper problems will show up here.")
+                    .font(.callout).foregroundStyle(.secondary)
+            } else {
+                VStack(alignment: .leading, spacing: 0) {
+                    ForEach(Array(shown.enumerated()), id: \.element.id) { n, e in
+                        if n == 0 || ActivityLog.dayHeading(e.date) != ActivityLog.dayHeading(shown[n - 1].date) {
+                            Text(ActivityLog.dayHeading(e.date).uppercased()).font(.system(size: 10, weight: .bold, design: .rounded)).tracking(1.2)
+                                .foregroundStyle(.secondary).padding(.top, n == 0 ? 0 : 10).padding(.bottom, 4)
+                        }
+                        HStack(alignment: .firstTextBaseline, spacing: 12) {
+                            Text(e.date.formatted(date: .omitted, time: .shortened)).font(.caption.monospacedDigit()).foregroundStyle(.secondary)
+                                .frame(width: 64, alignment: .leading)
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(e.title).font(.callout.weight(.semibold))
+                                if !e.detail.isEmpty { Text(e.detail).font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true) }
+                            }
+                        }
+                        .padding(.vertical, 5)
+                    }
+                    if all.count > 6 {
+                        Button(showAllChanges ? "Show fewer" : "Show all \(all.count)") { showAllChanges.toggle() }
+                            .buttonStyle(.link).font(.caption).padding(.top, 6)
+                    }
+                }
+                .padding(16).frame(maxWidth: .infinity, alignment: .leading)
+                .glassEffect(.regular, in: .rect(cornerRadius: 20))
+            }
+        }
+        .settingAnchor("Recent changes")
     }
 
     // MARK: Stats
@@ -149,17 +237,18 @@ struct OverviewPage: View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: 20) {
                 ForEach(model.config.zones) { z in
-                    ZoneTile(zone: z, active: model.target.label == z.name,
+                    ZoneTile(zone: z, active: model.target.zoneID == z.id,
                              pinned: model.config.overrideZone == z.name,
                              onSelect: { model.config.overrideZone = model.config.overrideZone == z.name ? nil : z.name },
                              onEdit: { model.go(.zones, focus: "Zones") })
                 }
                 DefaultTile(upper: model.config.defaultUpper, lower: model.config.defaultLower,
-                            active: model.target.label == "Default") { model.go(.zones, focus: "Everywhere else") }
+                            active: model.target.zoneID == nil && model.target.label == "Default") { model.go(.zones, focus: "Everywhere else") }
             }
             .padding(.horizontal, 20).padding(.vertical, 26)
         }
         .padding(.horizontal, -20)
+        .id("Zone tiles").tourAnchor("Zone tiles")
     }
 
     private var footer: some View {
@@ -226,5 +315,44 @@ struct QuickCard<Trailing: View>: View {
 extension QuickCard where Trailing == EmptyView {
     init(_ title: String, _ icon: String, _ tint: Color, _ subtitle: String, action: @escaping () -> Void) {
         self.init(title, icon, tint, subtitle, action: action) { EmptyView() }
+    }
+}
+
+/// "You're on “CafeNet” most Tue, Thu. Add it to a zone?" Shared by Overview and the compact layout.
+struct NetworkSuggestionView: View {
+    @ObservedObject var model: Model
+    let suggestion: NetworkSuggestion
+    let compact: Bool
+
+    private var addMenu: some View {
+        Menu("Add to Zone") {
+            ForEach(model.config.zones) { z in Button(z.name) { model.addSuggestedNetwork(to: z.id) } }
+            Divider()
+            Button("New Zone Named “\(suggestion.network)”") { model.addSuggestedNetwork(to: nil) }
+        }
+        .fixedSize()
+    }
+
+    var body: some View {
+        if compact {
+            Section("Suggestion") {
+                Text(suggestion.question())
+                HStack { addMenu; Button("Not Now") { model.snoozeNetworkHint() }; Button("Not This Network") { model.dismissNetworkHint() } }
+            }
+        } else {
+            VStack(alignment: .leading, spacing: 10) {
+                Label("A Wi-Fi network you use often", systemImage: "wifi").font(.system(.headline, design: .rounded))
+                Text(suggestion.question()).fixedSize(horizontal: false, vertical: true)
+                Text("Noticed on this Mac from networks you joined that no zone has. Nothing changes unless you add it.")
+                    .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+                HStack(spacing: 10) {
+                    addMenu.buttonStyle(.glassProminent).tint(.blue)
+                    Button("Not now") { model.snoozeNetworkHint() }.buttonStyle(.glass)
+                    Button("Not this network") { model.dismissNetworkHint() }.buttonStyle(.glass)
+                }
+            }
+            .padding(18).frame(maxWidth: .infinity, alignment: .leading)
+            .glassEffect(.regular.tint(.blue.opacity(0.14)), in: .rect(cornerRadius: 24))
+        }
     }
 }

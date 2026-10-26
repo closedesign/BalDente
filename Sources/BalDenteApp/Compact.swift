@@ -33,11 +33,37 @@ struct CompactView: View {
                     }
                 }
                 HStack {
-                    Button(model.topUp ? "Cancel Top Up" : "Top Up to 100%") { model.topUp.toggle(); model.refresh() }
+                    Button(model.topUp ? "Cancel Top Up" : "Top Up to 100%") { model.toggleTopUp() }
                         .buttonStyle(.borderedProminent)
                     if model.task != nil { Button("Cancel Task") { model.cmd("cancel") } }
                 }
             }
+            if let hint = model.holdHintText {
+                Section {
+                    HStack(alignment: .top) {
+                        Label(hint, systemImage: "info.circle").font(.callout)
+                        Spacer()
+                        Button { model.holdHint.dismissed = true } label: { Image(systemName: "xmark") }
+                            .buttonStyle(.borderless).help("Don't show this again")
+                    }
+                    HStack {
+                        Button("Top Up Now") { model.toggleTopUp() }
+                        Button("Set Ready by…") { model.openReadyBy() }.disabled(model.calendar.enabled)
+                    }
+                }
+            }
+            if let sug = model.habitSuggestion {
+                Section("Suggestion") {
+                    Text(sug.question)
+                    Text("Nothing changes unless you accept. It sets up Ready by.").font(.caption).foregroundStyle(.secondary)
+                    HStack {
+                        Button("Accept") { model.acceptHabit() }.buttonStyle(.borderedProminent)
+                        Button("Not Now") { model.snoozeHabit() }
+                        Button("Don't Suggest Again") { model.dismissHabit() }
+                    }
+                }
+            }
+            if let ns = model.networkSuggestion { NetworkSuggestionView(model: model, suggestion: ns, compact: true) }
             Section("Zones") {
                 Picker("Mode", selection: Binding(get: { model.config.overrideZone ?? "" },
                                                   set: { model.config.overrideZone = $0.isEmpty ? nil : $0 })) {
@@ -51,7 +77,7 @@ struct CompactView: View {
                         if z.place != nil { Image(systemName: "location.fill").font(.caption2).foregroundStyle(.secondary) }
                         Spacer()
                         Text("\(z.upper)% / \(z.lower)%").foregroundStyle(.secondary).monospacedDigit()
-                        if model.target.label == z.name { Image(systemName: "checkmark.circle.fill").foregroundStyle(model.accent) }
+                        if model.target.zoneID == z.id { Image(systemName: "checkmark.circle.fill").foregroundStyle(model.accent) }
                         Button { sheet = .zone(z.id) } label: { Image(systemName: "slider.horizontal.3") }.buttonStyle(.borderless)
                     }
                     .contentShape(Rectangle())
@@ -106,6 +132,24 @@ struct CompactView: View {
                 HStack {
                     Button("Calibrate Now") { model.cmd("calibrate") }.disabled(model.task != nil)
                     Button("Repeat…") { sheet = .schedule }
+                }
+            }
+            Section {
+                if model.activity.entries.isEmpty {
+                    Text("Nothing yet. Every limit change shows up here with its reason.").font(.callout).foregroundStyle(.secondary)
+                }
+                ForEach(model.activity.entries.prefix(5)) { e in
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(e.title).font(.callout.weight(.semibold))
+                        Text("\(e.date.formatted(date: .abbreviated, time: .shortened)) · \(e.detail)").font(.caption).foregroundStyle(.secondary)
+                            .lineLimit(2)
+                    }
+                }
+            } header: {
+                HStack {
+                    Text("Recent changes")
+                    Spacer()
+                    if !model.activity.entries.isEmpty { Button("Clear") { model.clearActivity() }.buttonStyle(.borderless).font(.caption) }
                 }
             }
             Section("Battery") {

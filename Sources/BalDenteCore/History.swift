@@ -13,12 +13,14 @@ public enum HealthHistory {
     /// "unknown") counts as unknown, and the result is sorted by date.
     public static func parse(_ csv: String) -> [HistoryPoint] {
         let f = DateFormatter(); f.locale = Locale(identifier: "en_US_POSIX"); f.dateFormat = "yyyy-MM-dd"
-        let rows: [HistoryPoint] = csv.split(whereSeparator: \.isNewline).compactMap { line -> HistoryPoint? in
+        let rows: [(Int, HistoryPoint)] = csv.split(whereSeparator: \.isNewline).enumerated().compactMap { n, line -> (Int, HistoryPoint)? in
             let c = line.split(separator: ",", omittingEmptySubsequences: false).map { $0.trimmingCharacters(in: .whitespaces) }
             guard c.count >= 4, let d = f.date(from: c[0]) else { return nil }
-            return HistoryPoint(date: d, health: Int(c[1]).flatMap { $0 > 0 ? $0 : nil }, cycles: Int(c[2]), battery: Int(c[3]))
+            return (n, HistoryPoint(date: d, health: Int(c[1]).flatMap { (1...150).contains($0) ? $0 : nil },   // a new battery can read a little over 100%
+                                    cycles: Int(c[2]).flatMap { $0 >= 0 ? $0 : nil }, battery: Int(c[3]).flatMap { (0...100).contains($0) ? $0 : nil }))
         }
-        return rows.sorted { $0.date < $1.date }.reduce(into: [HistoryPoint]()) { out, p in
+        // Sort by date, then file order, so "the latest reading of a day wins" doesn't depend on sort stability.
+        return rows.sorted { ($0.1.date, $0.0) < ($1.1.date, $1.0) }.map(\.1).reduce(into: [HistoryPoint]()) { out, p in
             // One point per day: the log can hold repeats (several launches, test bundles), and the latest reading wins.
             if let l = out.last, l.date == p.date { out[out.count - 1] = p } else { out.append(p) }
         }

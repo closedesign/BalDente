@@ -23,14 +23,14 @@ struct ZonesPage: View {
             }
             LazyVGrid(columns: [GridItem(.adaptive(minimum: 210, maximum: 230), spacing: 20)], alignment: .leading, spacing: 20) {
                 ForEach(model.config.zones) { z in
-                    ZoneTile(zone: z, active: model.target.label == z.name,
+                    ZoneTile(zone: z, active: model.target.zoneID == z.id,
                              pinned: model.config.overrideZone == z.name,
                              onSelect: { model.config.overrideZone = model.config.overrideZone == z.name ? nil : z.name },
                              onEdit: { sheet = .zone(z.id) })
                 }
                 AddTile { sheet = .zone(model.addZone().id) }
                 DefaultTile(upper: model.config.defaultUpper, lower: model.config.defaultLower,
-                            active: model.target.label == "Default") { sheet = .defaults }
+                            active: model.target.zoneID == nil && model.target.label == "Default") { sheet = .defaults }
                     .settingAnchor("Everywhere else")
             }
             .padding(.vertical, 8)
@@ -112,8 +112,32 @@ struct GeneralPage: View {
             }
             SettingsGroup("Notifications") {
                 SettingRow("bell.badge.fill", .red, "Smart notifications",
-                           "Tells you if battery health drops 2 points in a month or the helper stops answering. Checked during refreshes that already run.") {
+                           "Tells you if battery health drops 2 points in a month. Checked with the once-a-day log.") {
                     Toggle("", isOn: Binding(get: { model.trio.smartNotifications }, set: { model.trio.smartNotifications = $0 })).labelsHidden().toggleStyle(.switch)
+                }
+                SettingRow("bell.and.waves.left.and.right.fill", .orange, "Change notifications",
+                           "A notification every time the charge limit changes, with the reason. Everything is also listed under Recent changes on Overview, even when muted.") {
+                    EmptyView()
+                }
+                ForEach(NotifyCategory.allCases) { c in
+                    Toggle(c.title, isOn: Binding(get: { !model.muted.contains(c) },
+                                                  set: { if $0 { model.muted.remove(c) } else { model.muted.insert(c) } }))
+                        .toggleStyle(.switch).padding(.leading, 48)
+                }
+            }
+            SettingsGroup("Habit suggestions") {
+                SettingRow("sparkles", .orange, "Suggest a charge plan from my routine",
+                           "Learns when you usually unplug and offers a Ready by plan, and notices Wi-Fi networks you use often that no zone has. It only suggests: nothing changes until you accept.") {
+                    Toggle("", isOn: $model.habitsEnabled).labelsHidden().toggleStyle(.switch)
+                }
+                SettingRow("trash", .gray, "Clear learned habits",
+                           "What's recorded: the time and weekday when you unplug the charger or leave a zone on battery, for the last 8 weeks (\(model.habitSampleCount) days so far), and the names of Wi-Fi networks you join that no zone has, for the last 4 weeks. It stays on this Mac (habits.json, network-habits.json) and is never sent anywhere.") {
+                    Button("Clear") { model.clearHabits() }.buttonStyle(.glass)
+                }
+            }
+            SettingsGroup("Help") {
+                SettingRow("graduationcap.fill", .blue, "Show tutorial again", "The short tour of limits, zones, Ready by, heat protection and the menu bar icon.") {
+                    Button("Show") { model.showTutorial = true }.buttonStyle(.glass)
                 }
             }
             SettingsGroup("Backup") {
@@ -151,6 +175,8 @@ struct DonateButtons: View {
 }
 
 struct AboutPage: View {
+    @ObservedObject var model: Model
+
     var body: some View {
         SettingsGroup("Support BalDente") {
             Text("BalDente is free and will stay free, with no paid tier. If it saved your battery, a coffee helps keep it updated and working on more Macs.")
@@ -161,6 +187,7 @@ struct AboutPage: View {
             Text("BalDente \(appVersionText)").font(.headline)
             Text("A free battery charge limiter for macOS with zones, Ready by, heat protection and calibration, plus a combined menu bar icon for battery, network and volume.")
                 .fixedSize(horizontal: false, vertical: true)
+            Button { model.showTutorial = true } label: { pill("Show tutorial again", "graduationcap.fill") }.buttonStyle(.glass)
             Text("The combined icon's design, settings and charging animation follow Status Trio by lingyired (Apache-2.0), github.com/lingyired/status-trio. BalDente draws it with its own code.")
                 .font(.callout).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
         }

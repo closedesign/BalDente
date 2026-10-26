@@ -53,7 +53,7 @@ public enum SettingsSearch {
 /// A zone name that doesn't collide with any in `existing` ("New Zone", "New Zone 2", ...). Zones are pinned by name,
 /// so two with the same name would both light up and the second could never be pinned.
 public func uniqueZoneName(_ base: String, existing: [String]) -> String {
-    let taken = Set(existing.map { $0.lowercased() })
+    let taken = Set(existing.map { $0.lowercased() }).union(Zone.reserved)
     if !taken.contains(base.lowercased()) { return base }
     var n = 2
     while taken.contains("\(base) \(n)".lowercased()) { n += 1 }

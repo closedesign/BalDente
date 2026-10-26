@@ -300,6 +300,7 @@ final class StatusItemController: NSObject {
 
     @objc func openDashboard() { popover.close(); model.go(.overview); WindowOpener.open("main") }
     @objc func openSettings() { popover.close(); model.go(.icon); WindowOpener.open("main") }
+    func openReadyBy() { popover.close(); model.openReadyBy(); WindowOpener.open("main") }
 }
 
 extension StatusItemController: NSPopoverDelegate {

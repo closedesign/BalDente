@@ -55,6 +55,14 @@ struct RootView: View {
             if compact { CompactView(model: model) } else { MainWindow(model: model) }
         }
         .frame(minWidth: compact ? 380 : 620, minHeight: compact ? 420 : 440)
+        // First run gets the tour; after an update, What's New. Closing either one counts as seen.
+        .sheet(isPresented: Binding(get: { model.showTutorial }, set: { if !$0, model.showTutorial { model.finishTutorial() } })) {
+            TutorialSheet(model: model)
+        }
+        .background(Color.clear.sheet(isPresented: Binding(get: { model.whatsNew != nil && !model.showTutorial },
+                                                          set: { if !$0, model.whatsNew != nil { model.finishWhatsNew() } })) {
+            WhatsNewSheet(model: model, items: model.whatsNew ?? [])
+        })
         .onAppear { WindowOpener.action = openWindow }
         .onChange(of: compact) { _, c in
             guard let w = NSApp.windows.first(where: { $0.canBecomeMain && $0.isVisible }) else { return }
@@ -277,12 +285,13 @@ struct ReadyBySheet: View {
 
     private func save() {
         let cal = Calendar.current
-        let spec = on.sorted().map { d -> String in
+        let spec = ChargeSchedule.spec(on.sorted().map { d in
             let c = cal.dateComponents([.hour, .minute], from: times[d] ?? defaultTime())
-            return "\(d)@\(String(format: "%02d:%02d", c.hour ?? 7, c.minute ?? 30))@\(percents[d] ?? 100)"
-        }.joined(separator: ",")
+            return Slot(weekday: d, hour: c.hour ?? 7, minute: c.minute ?? 30, percent: percents[d] ?? 100)
+        })
         model.cmd("ready zone \(zone.isEmpty ? "any" : zone)")
         model.cmd(enabled && !on.isEmpty ? "ready on \(spec)" : "ready off")
+        if enabled && !on.isEmpty { model.holdHint.uses += 1 }
     }
 }
 
@@ -354,9 +363,10 @@ struct ZoneEditor: View {
                         Spacer()
                         Button("Done") { dismiss() }.buttonStyle(.glassProminent)
                     }
-                    if model.config.zones.contains(where: { $0.id != zoneID && $0.name.lowercased() == z.wrappedValue.name.lowercased() }) {
+                    if model.config.zones.contains(where: { $0.id != zoneID && $0.name.lowercased() == z.wrappedValue.name.lowercased() })
+                        || Zone.reserved.contains(z.wrappedValue.name.lowercased().trimmingCharacters(in: .whitespaces)) {
                         // Zones are pinned by name, so a twin can never be pinned on its own and both light up as active.
-                        Label("Another zone already uses this name. Pick a different one so each can be pinned.", systemImage: "exclamationmark.triangle.fill")
+                        Label("This name is taken. A number is added when you close this, unless you pick another.", systemImage: "exclamationmark.triangle.fill")
                             .font(.caption).foregroundStyle(.orange)
                     }
                     ScrollView(.horizontal, showsIndicators: false) {
@@ -388,6 +398,8 @@ struct ZoneEditor: View {
             }
             .frame(width: 540, height: 680)
             .presentationBackground(.ultraThinMaterial)
+            // Zones are pinned by name: an empty, duplicate or reserved name ("Default", "Top Up") is fixed when the editor closes.
+            .onDisappear { model.fixZoneName(zoneID) }
         }
     }
 

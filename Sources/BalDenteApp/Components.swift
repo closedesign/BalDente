@@ -8,40 +8,107 @@ struct BatteryRing: View {
     let caption: (text: String, icon: String)
     let tint: Color
     var size: CGFloat = 340
+    /// When set, the limit and resume markers can be dragged; called once with (upper, lower) when the drag ends.
+    var onLimitsChange: ((Int, Int) -> Void)? = nil
+
+    @State private var drag: (handle: RingDrag.Handle, upper: Int, lower: Int)?
+    @State private var ignoringDrag = false
+    @State private var pressStart: Int?        // percent under the press, until the drag has picked a marker
+    @State private var hovered: RingDrag.Handle?
 
     private var lw: CGFloat { size * 0.075 }
+    private var shownUpper: Int { drag?.upper ?? upper }
+    private var shownLower: Int { drag?.lower ?? lower }
 
     var body: some View {
         ZStack {
             Circle().stroke(Color.primary.opacity(0.13), style: StrokeStyle(lineWidth: lw, lineCap: .round)).padding(lw / 2)
+            // The band the battery sails in: between resume and the limit the charger stays off.
+            Circle().trim(from: CGFloat(shownLower) / 100, to: CGFloat(shownUpper) / 100)
+                .stroke(tint.opacity(drag != nil ? 0.28 : 0.14), style: StrokeStyle(lineWidth: lw, lineCap: .butt))
+                .rotationEffect(.degrees(-90)).padding(lw / 2)
             Circle().trim(from: 0, to: CGFloat(max(percent, 1)) / 100)
                 .stroke(AngularGradient(colors: [tint.opacity(0.5), tint, tint.opacity(0.85)], center: .center,
                                         startAngle: .degrees(0), endAngle: .degrees(Double(max(percent, 1)) * 3.6)),
                         style: StrokeStyle(lineWidth: lw, lineCap: .round))
                 .rotationEffect(.degrees(-90)).padding(lw / 2)
                 .shadow(color: tint.opacity(0.7), radius: size * 0.07)
-            marker(upper, opacity: 0.95)
-            marker(lower, opacity: 0.4)
+            marker(.lower, shownLower, opacity: 0.4)
+            marker(.upper, shownUpper, opacity: 0.95)
             VStack(spacing: size * 0.01) {
                 HStack(alignment: .firstTextBaseline, spacing: 2) {
-                    Text("\(percent)").font(.system(size: size * 0.34, weight: .thin, design: .rounded)).monospacedDigit()
+                    Text("\(drag.map { $0.handle == .upper ? $0.upper : $0.lower } ?? percent)")
+                        .font(.system(size: size * 0.34, weight: .thin, design: .rounded)).monospacedDigit()
                         .contentTransition(.numericText())
                     Text("%").font(.system(size: size * 0.11, weight: .light, design: .rounded)).foregroundStyle(.secondary)
                 }
-                Label(caption.text, systemImage: caption.icon)
+                Label(drag.map { $0.handle == .upper ? "Stop charging at" : "Resume at" } ?? caption.text,
+                      systemImage: drag.map { $0.handle == .upper ? "bolt.slash.fill" : "bolt.fill" } ?? caption.icon)
                     .font(.system(size: size * 0.05, weight: .semibold, design: .rounded))
                     .foregroundStyle(.secondary).labelStyle(.titleAndIcon)
             }
         }
         .frame(width: size, height: size)
+        .contentShape(.circle)
+        .gesture(dragGesture, isEnabled: onLimitsChange != nil)
         .animation(.smooth(duration: 0.9), value: percent)
+        .accessibilityElement(children: .combine)
+        .accessibilityValue("Charge \(percent)%, limit \(upper)%, resumes at \(lower)%")
+        .accessibilityAdjustableAction { dir in
+            guard let onLimitsChange else { return }
+            let m = RingDrag.move(.upper, to: upper + (dir == .increment ? 5 : -5), upper: upper, lower: lower)
+            onLimitsChange(m.upper, m.lower)
+        }
     }
 
-    private func marker(_ value: Int, opacity: Double) -> some View {
-        Capsule().fill(Color.primary.opacity(opacity))
-            .frame(width: size * 0.014, height: lw * 1.5)
+    private func marker(_ h: RingDrag.Handle, _ value: Int, opacity: Double) -> some View {
+        let editable = onLimitsChange != nil
+        let active = drag?.handle == h || (drag == nil && hovered == h)
+        return Capsule().fill(Color.primary.opacity(active ? 1 : opacity))
+            .frame(width: size * (active ? 0.026 : editable ? 0.018 : 0.014), height: lw * (active ? 1.9 : 1.5))
+            .shadow(color: .black.opacity(active ? 0.35 : 0), radius: 3)
+            .frame(width: lw * 1.6, height: lw * 2.2)       // a bigger target than the drawn marker
+            .contentShape(.rect)
+            .onHover { inside in if editable { hovered = inside ? h : (hovered == h ? nil : hovered) } }
+            .pointerStyle(editable ? (drag != nil ? .grabActive : .grabIdle) : nil)
+            .help(editable ? (h == .upper ? "Drag to change where charging stops" : "Drag to change where charging resumes") : "")
             .offset(y: -(size - lw) / 2)
             .rotationEffect(.degrees(Double(value) * 3.6))
+            .animation(.spring(duration: 0.25), value: active)
+    }
+
+    private var dragGesture: some Gesture {
+        DragGesture(minimumDistance: 0)
+            .onChanged { v in
+                guard !ignoringDrag else { return }
+                let c = size / 2
+                let dx = v.location.x - c, dy = v.location.y - c
+                if drag == nil {
+                    if pressStart == nil {
+                        // Only a press on the ring's band near a marker grabs it; elsewhere the ring is just a picture.
+                        let r = hypot(v.startLocation.x - c, v.startLocation.y - c)
+                        let p = RingDrag.percent(dx: v.startLocation.x - c, dy: v.startLocation.y - c, previous: 50)  // 50: no wrap clamp
+                        let near = min(RingDrag.distance(p, upper), RingDrag.distance(p, lower))
+                        guard abs(r - (size - lw) / 2) < lw * 1.2, near <= 6 else { ignoringDrag = true; return }
+                        pressStart = p
+                    }
+                    guard let s = pressStart else { return }
+                    let now = RingDrag.percent(dx: dx, dy: dy, previous: s)
+                    guard let h = RingDrag.handle(start: s, now: now, upper: upper, lower: lower) else { return }
+                    drag = (h, upper, lower)
+                }
+                guard let d = drag else { return }
+                let p = RingDrag.percent(dx: dx, dy: dy, previous: d.handle == .upper ? d.upper : d.lower)
+                let m = RingDrag.move(d.handle, to: p, upper: d.upper, lower: d.lower)
+                if m.upper != d.upper || m.lower != d.lower {
+                    drag = (d.handle, m.upper, m.lower)
+                    NSHapticFeedbackManager.defaultPerformer.perform(.alignment, performanceTime: .default)
+                }
+            }
+            .onEnded { _ in
+                if let d = drag { onLimitsChange?(d.upper, d.lower) }
+                drag = nil; ignoringDrag = false; pressStart = nil
+            }
     }
 }
 

@@ -25,6 +25,9 @@ public struct Zone: Codable, Identifiable, Equatable {
     public init(name: String, networks: [String] = [], upper: Int, lower: Int, icon: String? = nil, place: Place? = nil) {
         self.name = name; self.networks = networks; self.upper = upper; self.lower = lower; self.icon = icon; self.place = place
     }
+
+    /// Labels the app uses for non-zone targets (lowercased). A zone with one of these names would be mistaken for them.
+    public static let reserved: Set<String> = ["default", "top up", "travel mode", "manual"]
 }
 
 public struct Appearance: Codable, Equatable {
@@ -61,9 +64,10 @@ public struct Config: Codable, Equatable {
         var seen = Set<String>()
         for i in c.zones.indices {
             (c.zones[i].upper, c.zones[i].lower) = clamp(c.zones[i].upper, c.zones[i].lower)
-            let base = c.zones[i].name.isEmpty ? "Zone" : c.zones[i].name
+            let trimmed = c.zones[i].name.trimmingCharacters(in: .whitespacesAndNewlines)
+            let base = trimmed.isEmpty ? "Zone" : trimmed
             var name = base, n = 2
-            while seen.contains(name.lowercased()) { name = "\(base) \(n)"; n += 1 }
+            while seen.contains(name.lowercased()) || Zone.reserved.contains(name.lowercased()) { name = "\(base) \(n)"; n += 1 }
             seen.insert(name.lowercased()); c.zones[i].name = name
         }
         if let o = c.overrideZone, !c.zones.contains(where: { $0.name == o }) { c.overrideZone = nil }
@@ -91,23 +95,42 @@ public struct Target: Equatable {
     public var lower: Int
     /// The zone this came from, so renaming a zone isn't mistaken for switching zones. Nil for Default and Top Up.
     public var zoneID: UUID?
-    public init(label: String, upper: Int, lower: Int, zoneID: UUID? = nil) {
-        self.label = label; self.upper = upper; self.lower = lower; self.zoneID = zoneID
+    /// Why this target won, in words ("Wi-Fi HomeNet", "pinned"). Not part of equality: it never changes what the helper enforces.
+    public var reason: String?
+    public init(label: String, upper: Int, lower: Int, zoneID: UUID? = nil, reason: String? = nil) {
+        self.label = label; self.upper = upper; self.lower = lower; self.zoneID = zoneID; self.reason = reason
     }
-    init(_ z: Zone) { self.init(label: z.name, upper: z.upper, lower: z.lower, zoneID: z.id) }
+    init(_ z: Zone, reason: String) { self.init(label: z.name, upper: z.upper, lower: z.lower, zoneID: z.id, reason: reason) }
+
+    public static func == (a: Target, b: Target) -> Bool {
+        a.label == b.label && a.upper == b.upper && a.lower == b.lower && a.zoneID == b.zoneID
+    }
+
+    /// The label as sent to the helper: one token (the protocol splits on spaces), no control characters, never empty,
+    /// at most 64 characters. The helper applies the same function, so the label it reports always equals what was sent.
+    public var wireLabel: String { Target.wire(label) }
+
+    public static func wire(_ s: String) -> String {
+        let cleaned = String(String.UnicodeScalarView(s.unicodeScalars.map {
+            CharacterSet.whitespacesAndNewlines.contains($0) ? "_" : $0
+        }.filter { !CharacterSet.controlCharacters.contains($0) }))
+        let t = String(cleaned.prefix(64))
+        return t.isEmpty ? "zone" : t
+    }
 }
 
 /// Override wins, then a zone whose Wi-Fi matches, then a zone whose map circle we're inside, then the default.
 public func resolveZone(_ config: Config, networks: [String], inside: Set<UUID> = []) -> Target {
     if let name = config.overrideZone, let z = config.zones.first(where: { $0.name == name }) {
-        return Target(z)
+        return Target(z, reason: "you pinned it")
     }
     let current = Set(networks.map { $0.lowercased() })
-    for z in config.zones where z.networks.contains(where: { current.contains($0.lowercased()) }) {
-        return Target(z)
+    for z in config.zones {
+        if let n = z.networks.first(where: { current.contains($0.lowercased()) }) { return Target(z, reason: "connected to \(n)") }
     }
     if let z = config.zones.first(where: { inside.contains($0.id) }) {
-        return Target(z)
+        return Target(z, reason: "you're at its saved place")
     }
-    return Target(label: "Default", upper: config.defaultUpper, lower: config.defaultLower)
+    return Target(label: "Default", upper: config.defaultUpper, lower: config.defaultLower,
+                  reason: config.zones.contains { !$0.networks.isEmpty || $0.place != nil } ? "no zone's Wi-Fi or place matches" : "no zone has a Wi-Fi network or place yet")
 }

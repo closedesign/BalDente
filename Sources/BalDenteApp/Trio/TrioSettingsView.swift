@@ -14,7 +14,7 @@ struct TrioPageView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 18) {
-            IconPreviewCard(model: model, system: system, dark: $previewDark)
+            IconPreviewCard(model: model, system: system, dark: $previewDark).tourAnchor("Menu bar preview")
             Text("Live preview. Changes below show up here and in your menu bar immediately.").font(.callout).foregroundStyle(.secondary)
             content
         }

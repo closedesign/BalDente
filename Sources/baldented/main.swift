@@ -24,6 +24,7 @@ func saveState() {
 }
 
 var heatHold = false
+var batteryHot = false
 
 /// Fixed Gregorian POSIX format, so the "already ran today" check can't drift with the system calendar or locale.
 func today() -> String { dayString(Date()) }
@@ -67,7 +68,7 @@ func checkReadyBy(_ pct: Int) {
     guard let next = cs.nextSlot(after: now) else { return }
     let ready = next.ready, slot = next.slot
     // Zone-limited schedules only run while that zone is active (the app sends zone names with spaces as underscores).
-    if let z = cs.onlyZone, z.replacingOccurrences(of: " ", with: "_") != state.label { return }
+    if let z = cs.onlyZone, Target.wire(z) != state.label { return }
     let startAt = ready.addingTimeInterval(-ChargeSchedule.leadMinutes(percent: pct, target: slot.percent) * 60)
     if now >= startAt, !state.task.active {
         state.task = TaskState(); state.task.kind = "topup"; state.task.target = slot.percent
@@ -160,13 +161,16 @@ func apply() {
     let temp = batt?.tempC
     plugged = batt?.plugged ?? true
 
+    // Track heat even while a task runs, so the status never reports a stale "cooling down" and the pause resumes correctly after it.
+    if state.heatProtection, let t = temp {
+        if t >= Double(state.heatLimit) { batteryHot = true } else if t <= Double(state.heatLimit - 3) { batteryHot = false }
+    } else { batteryHot = false }
     var want: Bool
     if let task = advanceTask(pct) {
         want = task
+        heatHold = false        // tasks have their own (45 °C) cutoff below; heat protection isn't what's holding the charger
     } else {
-        if state.heatProtection, let t = temp {
-            if t >= Double(state.heatLimit) { heatHold = true } else if t <= Double(state.heatLimit - 3) { heatHold = false }
-        } else { heatHold = false }
+        heatHold = batteryHot
         if heatHold { want = false }
         else if !state.enabled { want = true }
         else if pct >= state.upper { want = false }
@@ -200,13 +204,13 @@ func handle(_ line: String) -> String {
         guard p.count >= 3, let u = Int(p[1]), let l = Int(p[2]), (5...100).contains(u), (1..<u).contains(l)
         else { return "error: usage limit <upper 5-100> <lower below upper> [label]" }
         state.enabled = u < 100; state.upper = u; state.lower = l
-        state.label = p.count > 3 ? p[3] : "manual"
+        state.label = p.count > 3 ? Target.wire(p[3]) : "manual"
     case "disable": state.enabled = false
     case "enable": state.enabled = true
     case "heat":
         guard p.count >= 2, ["on", "off"].contains(p[1]) else { return "error: usage heat on|off [celsius \(HeatLimit.range.lowerBound)-\(HeatLimit.range.upperBound)]" }
+        if p.count > 2 { guard let c = Int(p[2]), HeatLimit.range.contains(c) else { return "error: celsius must be \(HeatLimit.range.lowerBound)-\(HeatLimit.range.upperBound)" }; state.heatLimit = c }
         state.heatProtection = p[1] == "on"
-        if p.count > 2, let c = Int(p[2]), HeatLimit.range.contains(c) { state.heatLimit = c }
     case "lowpower":
         guard p.count == 2, ["on", "off"].contains(p[1]) else { return "error: usage lowpower on|off" }
         state.lowPower = p[1] == "on"; setLowPower(state.lowPower)
@@ -222,9 +226,12 @@ func handle(_ line: String) -> String {
         } else if p.count == 2, p[1] == "off" { state.calibrateAt = nil }
         else { startCalibration() }
     case "ready":
-        if p.count == 2, p[1] == "off" { state.chargeSchedule.enabled = false }
+        if p.count == 2, p[1] == "off" {
+            state.chargeSchedule.enabled = false
+            if state.task.kind == "topup" { state.task = TaskState() }   // turning Ready by off also ends a top-up it started
+        }
         else if p.count >= 3, p[1] == "zone" {
-            let name = p[2...].joined(separator: " ")
+            let name = String(p[2...].joined(separator: " ").prefix(64))
             state.chargeSchedule.onlyZone = name == "any" ? nil : name
         } else if p.count == 3, p[1] == "on" {
             // spec: weekday@HH:MM[@percent][,...] with 1 = Sunday ... 7 = Saturday
@@ -270,13 +277,15 @@ func serve() {
     chmod(socketPath, 0o660)
     while true {
         let c = accept(fd, nil, nil)
-        guard c >= 0 else { continue }
+        guard c >= 0 else { usleep(100_000); continue }    // e.g. out of descriptors: back off instead of spinning a core
         var tv = timeval(tv_sec: 2, tv_usec: 0)   // a silent client must not freeze the daemon
         setsockopt(c, SOL_SOCKET, SO_RCVTIMEO, &tv, socklen_t(MemoryLayout<timeval>.size))
         var buf = [UInt8](repeating: 0, count: 512)
         let n = read(c, &buf, buf.count)
         if n > 0 {
-            let line = String(decoding: buf[0..<n], as: UTF8.self).trimmingCharacters(in: .whitespacesAndNewlines)
+            // One command per connection: only the first line counts, so stray bytes can't smuggle a second one in.
+            let text = String(decoding: buf[0..<n], as: UTF8.self)
+            let line = String(text.split(whereSeparator: \.isNewline).first ?? "").trimmingCharacters(in: .whitespaces)
             let reply = queue.sync { handle(line) } + "\n"
             _ = reply.withCString { write(c, $0, strlen($0)) }
         }
@@ -284,6 +293,8 @@ func serve() {
     }
 }
 
+// A client that gives up before the reply would otherwise kill us with SIGPIPE on write, skipping the cleanup below.
+signal(SIGPIPE, SIG_IGN)
 // Never leave the Mac with its charger cut off if we exit.
 for sig in [SIGTERM, SIGINT] {
     signal(sig, SIG_IGN)

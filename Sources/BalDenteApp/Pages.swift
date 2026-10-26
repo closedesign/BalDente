@@ -82,9 +82,11 @@ enum SettingsIndex {
         }
         return [
             // Overview
+            i("Drag the charge ring", "Drag the markers on the Overview ring to set where charging stops and resumes for the active zone.", ["limit", "resume", "buffer", "hysteresis", "drag", "ring"], .overview, anchor: "Charge ring"),
             i("Top Up to 100%", "Charge fully now, for a trip, then go back to your zone's limit.", ["charge fully", "full charge", "travel", "boost"], .overview, anchor: "Top Up"),
             i("Automatic zone", "Let Wi-Fi and location choose the limit instead of pinning one.", ["pin", "override", "manual"], .overview, anchor: "Automatic"),
             i("Travel mode", "Hold 100% for 24 hours, then return to your zone's limit.", ["trip", "flight", "airplane", "full charge"], .overview, anchor: "Travel mode"),
+            i("Recent changes", "Every limit change with when and why. Clear it any time.", ["activity", "log", "history", "what changed", "why", "events"], .overview),
             // Zones
             i("Zones", "Add, rename and edit zones with their own charge limits.", ["add zone", "new zone", "home", "school", "work", "travel", "delete zone", "icon"], .zones),
             i("Everywhere else", "Default limits when no zone matches.", ["default limits", "fallback", "stop charging at", "resume at", "sailing"], .zones),
@@ -158,7 +160,11 @@ enum SettingsIndex {
             i("Status refresh interval", "How often signal strength is checked.", ["poll", "energy", "battery drain", "seconds"], .general),
             i("Background helper", "The root helper that switches charging. Install, update or remove it.", ["daemon", "install", "uninstall", "update", "reinstall", "permission", "password"], .general),
             i("Location access", "Needed to read Wi-Fi names and use saved places.", ["permission", "privacy", "wifi name", "ssid"], .general),
-            i("Smart notifications", "Battery health drops and a silent helper.", ["alerts", "health", "warning"], .general),
+            i("Smart notifications", "Battery health drops.", ["alerts", "health", "warning"], .general),
+            i("Change notifications", "Notify on zone switches, Ready by, heat, habits, Top Up and helper problems. Mute any kind.", ["alerts", "mute", "silence", "zone switch", "notify", "banner"], .general),
+            i("Suggest a charge plan from my routine", "Learn when you usually unplug and suggest a Ready by plan.", ["habit", "routine", "learn", "suggestion", "unplug", "privacy"], .general),
+            i("Clear learned habits", "Delete the recorded unplug times and often-used Wi-Fi names.", ["habit", "privacy", "delete", "reset", "routine", "wifi"], .general),
+            i("Show tutorial again", "Replay the short tour.", ["tour", "help", "intro", "onboarding", "guide", "welcome", "defaults"], .general),
             i("Export or import settings", "Back up zones and limits to a file.", ["backup", "restore", "json", "transfer"], .general),
             i("Reset icon and panel settings", "Charging limits and zones are not affected.", ["defaults", "restore"], .general),
             i("Support BalDente", "Donate on Ko-fi or Buy Me a Coffee. BalDente stays free.", ["donate", "coffee", "ko-fi", "tip", "sponsor", "support", "money"], .about),
@@ -188,6 +194,7 @@ private struct SettingAnchor: ViewModifier {
     func body(content: Content) -> some View {
         content
             .id(id)
+            .tourAnchor(id)
             // An outline and glow drawn on top, so it still shows over glass cards (a background would be hidden by them).
             .overlay {
                 RoundedRectangle(cornerRadius: 22)

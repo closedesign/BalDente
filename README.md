@@ -58,6 +58,9 @@ A **zone** is a charge limit that switches on by itself, based on where you are:
 - **Out of the box BalDente limits charging to 50% at home** (it resumes at 45%), so a Mac that lives on its charger
   stops wearing the battery. Add your home Wi-Fi to the **Home** zone and it happens automatically. The other starter zones are
   **School** (100%), **Travel** (90%), and **Everywhere else** (80%) for anywhere that matches no zone.
+- **The first-run tour shows these defaults up front** and offers a simpler **80% everywhere** instead. While charging is held
+  below 100%, Overview and the menu bar panel say why ("Holding at 50% (Home zone)") with one-click Top Up and Ready by.
+- **Every zone switch is announced** with its reason (for example "connected to HomeNet" or "you pinned it").
 - Pin any zone by hand, or tap **Automatic** to let Wi-Fi and location decide again.
 - Create as many zones as you like, rename them, and back them up with **Export settings**.
 
@@ -80,11 +83,18 @@ four dots at the bottom are the volume.
 
 **Charging control**
 - Charge limit with a separate resume level (hysteresis), applied by a small root helper through the SMC.
+- **Drag the ring:** on Overview, drag the two markers on the battery ring to set where charging stops and where it resumes,
+  for whichever zone is active (or "Everywhere else").
 - **Top Up to 100%** for a trip, then back to your zone's limit.
 - **Travel mode:** hold 100% for 24 hours, then return to normal.
 - **Ready by:** per-day schedule (days, leave time, target charge, optionally only in one zone). Charging is timed to
   finish just as you leave, and the Mac wakes itself to start when needed.
 - **Calendar Ready by:** reads your next timed event (Calendar access, event start time only) and gets you full a set time before.
+- **Habit suggestions:** learns when you usually unplug, per weekday, and suggests a Ready by plan ("You usually unplug around 8:10
+  on weekdays. Charge to 100% by 8:00?"). It only suggests: nothing changes until you tap Accept. The last 8 weeks of unplug times
+  stay on your Mac, and you can turn it off or clear them in General. Answer straight from the notification (Accept / Not now).
+- **Zone suggestions:** notices a Wi-Fi network you join regularly that no zone has ("You're on “CafeNet” most Tue, Thu") and
+  offers to add it to a zone or make a new one. Suggest only, on-device, last 4 weeks.
 - **Heat Protection:** pauses charging when the battery gets hot. Limit from 30 to 60 °C, default 35 °C, set with a thermometer
   you can drag, click, or type into (↑ ↓ ← →, ⇧ for 5), with presets.
 - **Discharge** to a chosen level with the charger plugged in.
@@ -100,6 +110,14 @@ four dots at the bottom are the volume.
 - Middle slot shows Wi-Fi, Ethernet, hotspot, a Bluetooth audio device, the input source, or the percentage.
 - Live preview and a gallery of icon states in settings.
 
+**Always know what changed**
+- A notification for every limit change, always with the reason: zone switches, Ready by and calendar top-ups starting and
+  finishing, heat protection, accepted habit plans, Top Up, Travel mode, discharge and calibration, and a helper that stopped
+  answering. Mute any kind separately.
+- **Recent changes** on Overview lists what changed, when and why, and survives restarts.
+- A short, skippable **guided tour** on first launch that spotlights each control in the real window (replay it from General, About
+  or the Help menu), and a **What's New** sheet after each update.
+
 **Status panel** (click the icon, or set a global shortcut)
 - Battery, Network, Bluetooth, Volume, plus optional Microphone, Input Source and VPN sections, reorderable and hideable.
 - Local IP address, Bluetooth device battery levels, a Bluetooth on/off switch, scroll to change volume (natural scrolling option),
@@ -113,7 +131,7 @@ four dots at the bottom are the volume.
 - Background follows the active zone, or pick a preset, or choose your own colors; optional animation.
 - **Compact mode:** a dense standard Mac layout in a small window. The regular window resizes down to about 640 x 470.
 - **Search settings** with ⌘F: type a word and jump to (and highlight) the setting.
-- Launch at login, status refresh interval, smart notifications (battery health drops, a helper that stopped answering),
+- Launch at login, status refresh interval, smart notifications (battery health drops),
   export and import all your settings, reset icon and panel settings.
 - Command line tool: `baldente status | limit <upper> <lower> | enable | disable`.
 
@@ -148,6 +166,8 @@ a local Unix socket, applies the limit through the Mac's SMC, and does nothing e
 
 - **Location** access is used only to read Wi-Fi names and saved places for zone switching.
 - **Calendar** access is used only for the start time of your next timed event when *Calendar Ready by* is on.
+- **Habit suggestions** record only unplug times and weekdays (and zone exits on battery) in `habits.json`, and Wi-Fi names that
+  no zone has in `network-habits.json`, both on your Mac. Nothing is uploaded.
 - Remove the helper any time: **General → Charging helper → Remove**.
 
 Battery charging is a hardware-adjacent feature. Read [SECURITY.md](SECURITY.md) and the code if you want to be sure.

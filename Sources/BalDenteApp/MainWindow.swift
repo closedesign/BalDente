@@ -20,6 +20,8 @@ struct MainWindow: View {
             }
         }
         .preferredColorScheme(.dark)
+        .overlayPreferenceValue(TourAnchorKey.self) { anchors in TourOverlay(model: model, anchors: anchors) }
+        .animation(.easeOut(duration: 0.25), value: model.tourStep == nil)
         .onGeometryChange(for: Bool.self) { $0.size.width < 780 } action: { narrow = $0 }
         // ⌘F from anywhere in the window.
         .background(Button("") { searchFocused = true }.keyboardShortcut("f", modifiers: .command).opacity(0).allowsHitTesting(false))
@@ -124,7 +126,7 @@ struct MainWindow: View {
                 .padding(.horizontal, 32).padding(.top, model.status == nil || model.helperOutdated ? 20 : 44).padding(.bottom, 32)
                 .frame(maxWidth: 980, alignment: .leading)
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .environment(\.focusedSetting, model.focus)
+                .environment(\.focusedSetting, model.tourStep == nil ? model.focus : nil)   // the tour draws its own highlight
             }
             // Scroll to the setting a search jumped to, once the page has had a moment to lay out.
             .task(id: model.page) { await scroll(proxy) }
@@ -203,7 +205,7 @@ struct PageBody: View {
         case .history: HistoryPage(model: model)
         case .appearance: AppearancePage(model: model)
         case .general: GeneralPage(model: model)
-        case .about: AboutPage()
+        case .about: AboutPage(model: model)
         case .icon, .battery, .network, .bluetooth, .audio, .panel: TrioPageView(model: model, system: model.system, page: page)
         }
     }

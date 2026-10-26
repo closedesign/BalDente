@@ -91,12 +91,23 @@ struct ChargingHeader: View {
                         Image(systemName: Theme.icon(z)).frame(width: 26, height: 22)
                     }
                     .buttonStyle(.glass).help(z.name)
-                    .tint(model.target.label == z.name ? Theme.accent(z.name) : nil)
+                    .tint(model.target.zoneID == z.id ? Theme.accent(z.name) : nil)
                 }
                 Spacer()
-                Button { model.topUp.toggle(); model.refresh() } label: {
+                Button { model.toggleTopUp() } label: {
                     Label(model.topUp ? "Cancel" : "Top Up", systemImage: "bolt.fill")
                 }.buttonStyle(.glassProminent).tint(model.accent)
+            }
+            if let hint = model.holdHintText {
+                HStack(alignment: .top, spacing: 6) {
+                    Text(hint).font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+                    Spacer(minLength: 0)
+                    Button { model.holdHint.dismissed = true } label: { Image(systemName: "xmark").font(.caption2) }
+                        .buttonStyle(.borderless).foregroundStyle(.tertiary).help("Don't show this again")
+                }
+                if !model.calendar.enabled {
+                    Button("Set Ready by…") { model.statusController?.openReadyBy() }.buttonStyle(.link).font(.caption)
+                }
             }
         }
         .panelCard()

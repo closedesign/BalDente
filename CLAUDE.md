@@ -15,7 +15,11 @@ project file. Not a git repo yet — if you add one, use `.gitignore` for `.buil
   `MainWindow.swift` is the sidebar shell (search box, ⌘F, routes `SettingsPage` → page views); pages live in
   `OverviewPage`, `ChargingPage`, `ConfigPages` (zones, appearance, general, about) and `Trio/TrioSettingsView.swift`
   (menu bar pages). `Pages.swift` holds `SettingsPage` and `SettingsIndex` (the searchable list). `HistoryPage.swift` charts the daily log, shows the 80%-health projection, and offers export/reset (parsing, per-day dedupe, summary and projection math in `BalDenteCore/History.swift`, unit-tested); `CalendarReady.swift`
-  sets Ready by from EventKit (event-driven, no polling; slot math in `ReadyPlan`). `Compact.swift` is the dense alternative layout. `Trio/` also has the status item controller, renderer, panel and system monitor.
+  sets Ready by from EventKit (event-driven, no polling; slot math in `ReadyPlan`). `Compact.swift` is the dense alternative layout. `Tutorial.swift` has the first-run intro sheet and What's New; `GuidedTour.swift` is the spotlight tour (steps point at
+  `settingAnchor`/`tourAnchor` ids; anchors use `transformAnchorPreference` so a group's anchor doesn't hide its rows'). Add a tour step by anchoring the view and adding a `TourStep`. `Trio/` also has the status item controller, renderer, panel and system monitor.
+- Keeping users informed (all UI-free, unit-tested in Core): `Onboarding.swift` (defaults explainer read from `Config()`/`HeatLimit`,
+  the "80% everywhere" preset, the hold hint, `TutorialVersion`), `HabitPlanner.swift` (unplug history in `habits.json`, suggestion math), `NetworkHints.swift` (unknown Wi-Fi seen often → "add it to a zone?", `network-habits.json`),
+  `Activity.swift` (`ChangeEvent` wording + `NotifyCategory`, the Recent changes log in `activity.json`), `WhatsNew.swift` (CHANGELOG section parser).
 - `Sources/smcprobe` — standalone probe (`swift run smcprobe`) for discovering which SMC keys this
   Mac exposes and whether they're writable as a normal user. Run this first on unfamiliar hardware
   before assuming a backend works.
@@ -35,6 +39,14 @@ There's no Xcode project — everything goes through `swift build`/`swift test` 
 1. Add the row with `SettingRow`/`SettingsGroup` (they call `.settingAnchor(title)` so search can scroll to and flash them).
 2. Add a matching `SettingsIndex` entry in `Pages.swift`; its title must equal the row title (or set `anchor:`).
 3. Ranking logic is `BalDenteCore/SettingsSearch.swift` and is unit-tested; keep UI-free logic in Core.
+
+## Announcing changes
+- Every limit change goes through `Model.announce(ChangeEvent)`: it always appends to Recent changes and notifies unless that category is muted.
+  Add new wording to `ChangeEvent` (Core), not ad-hoc `notify` calls. Habit and zone suggestions only suggest; never apply a schedule or add a network without the user's tap.
+  Habit notifications carry Accept/Not now actions (`Model` is the `UNUserNotificationCenter` delegate); they act only if the notification's
+  `signature` still matches the current suggestion.
+- What's New reads this version's `## <version>` section of `CHANGELOG.md` (copied into the bundle by `make_app.sh`); keep its entries as `- ` bullets.
+- Bump `TutorialVersion.current` only when the tour changes enough to re-show it to people who saw the old one.
 
 ## Versioning
 - The version lives in the `VERSION` file (read by `make_app.sh`; the build number is the git commit count). **Bump it after every major change**
@@ -76,7 +88,12 @@ There's no Xcode project — everything goes through `swift build`/`swift test` 
 - Launching the debug binary from a shell crashes (Bluetooth TCC); wrap it in a throwaway .app with its own bundle id and start
   it with `open -n --env BALDENTE_TEST_CHARGING=1 …` (that env var forces the charging animation).
 - The heat-limit range (30–60 °C) and default (35 °C) live in `BalDenteCore/HeatLimit.swift` and are shared with `baldented`; changing them means users must update the helper.
-- Zone names must be unique (zones are pinned by name); use `Model.addZone()`.
+- Zone names must be unique and not reserved ("Default", "Top Up", "Travel Mode", "manual"); use `Model.addZone()`, and the zone editor calls
+  `Model.fixZoneName` on close. Tiles mark the active zone by `target.zoneID`, not by label.
+- Labels sent to the helper go through `Target.wire` (Core); `baldented` applies the same function, so app and helper always agree on the label.
+- A throwaway test bundle (even with `BALDENTE_DEMO=1`) reads and writes the real `~/Library/Application Support/BalDente/config.json`; back it up before UI tests that change limits.
+- The Overview ring's markers are draggable (`BatteryRing.onLimitsChange`, math in `BalDenteCore/RingDrag.swift`); it commits once on release via `Model.setTargetLimits`.
+- Habit unplugs are confirmed after a fresh status (`pendingUnplug`): with older SMC keys a held charger also reads as unplugged.
 
 ## Battery data
 - Health % = `NominalChargeCapacity / DesignCapacity` (what System Settings shows; `FullChargeCapacity` reads ~2 points lower). Legacy keys are fallbacks only.
@@ -126,7 +143,8 @@ when "Calendar Ready by" is on. Don't widen it without updating those strings.
 - Work inline; don't spawn subagents for a codebase this small. Use `grep -n`/`sed -n` ranges instead of reading whole files, and only read files you'll edit.
 - Batch related edits into one Python/Edit pass, then one `swift build`; run `swift test` once at the end.
 - Don't re-read files you just edited, don't re-run passing builds, and keep command output short (`| tail`, `grep error:`).
-- UI check: one scaled `app_screenshot` of the throwaway bundle, not many.
+- UI check: one scaled `app_screenshot` of the throwaway bundle, not many. Background clicks on overlay buttons can arrive as
+  "raw input" and fire twice (an extra mouse-up), so a tour that skips steps under test is the tool, not the app; prefer AXPress (element_index).
 - Prefer `/compact` or a fresh session between unrelated tasks.
 
 ## Model guidance for agents working in this repo

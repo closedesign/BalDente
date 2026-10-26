@@ -28,6 +28,10 @@ struct ChargingCommands: Commands {
 
     var body: some Commands {
         CommandGroup(replacing: .newItem) {}
+        // Replaces macOS's "Help isn't available" with the tour.
+        CommandGroup(replacing: .help) {
+            Button("BalDente Tutorial") { model.showTutorial = true; WindowOpener.open("main") }
+        }
         CommandGroup(replacing: .appSettings) {
             Button("Settings…") { model.go(.icon); WindowOpener.open("main") }.keyboardShortcut(",")
         }
@@ -39,7 +43,7 @@ struct ChargingCommands: Commands {
                 .keyboardShortcut("f", modifiers: [.command, .shift])
         }
         CommandMenu("Charging") {
-            Button(model.topUp ? "Cancel Top Up" : "Top Up to 100%") { model.topUp.toggle(); model.refresh() }
+            Button(model.topUp ? "Cancel Top Up" : "Top Up to 100%") { model.toggleTopUp() }
                 .keyboardShortcut("t")
             Button("Start Calibration") { model.cmd("calibrate") }.keyboardShortcut("k")
             Button("Cancel Running Task") { model.cmd("cancel") }.keyboardShortcut(".")
