@@ -21,7 +21,8 @@ project file. Not a git repo yet — if you add one, use `.gitignore` for `.buil
   App-side: `AutoDischarge.swift`, `AutomationURL.swift` (`baldente://`, parsed in Core, run by `Model.run`), `AutomationState.swift` (`baldente get`), `ReadyPreview.swift` (Overview "Leaving" card), `PowerFlow.swift`, `AutomationCards.swift` (Sleep, Schedule, LED cards).
 - Keeping users informed (all UI-free, unit-tested in Core): `Onboarding.swift` (defaults explainer read from `Config()`/`HeatLimit`,
   the "80% everywhere" preset, the hold hint, `TutorialVersion`), `HabitPlanner.swift` (unplug history in `habits.json`, suggestion math), `NetworkHints.swift` (unknown Wi-Fi seen often → "add it to a zone?", `network-habits.json`),
-  `Activity.swift` (`ChangeEvent` wording + `NotifyCategory`, the Recent changes log in `activity.json`), `WhatsNew.swift` (CHANGELOG section parser).
+  `Activity.swift` (`ChangeEvent` wording + `NotifyCategory`, the Recent changes log in `activity.json`), `WhatsNew.swift` (CHANGELOG section parser),
+  `ZoneWear.swift` (hours above 80% per zone in `zone-wear.json`, sampled on `refreshStatus`, saved every 10 min; `WearSuggestion`), `LimitPause` in `Onboarding.swift` (timed Travel Mode, no helper change).
 - `Sources/smcprobe` — standalone probe (`swift run smcprobe`) for discovering which SMC keys this
   Mac exposes and whether they're writable as a normal user. Run this first on unfamiliar hardware
   before assuming a backend works.
@@ -87,6 +88,8 @@ There's no Xcode project — everything goes through `swift build`/`swift test` 
 ## Layout rules
 - `SettingRow` uses `RowControlLayout` (control beside the label, or under it when the label would get under 230pt); pages of cards use `MasonryLayout` (1-3 columns).
   Rules live in Core (`RowLayoutRule`, `ColumnRule`) so they're tested. The window has no minimum size; the sidebar goes icon-only under 520pt.
+- Status panel: never `.mask` its ScrollView (off-screen rendering makes the popover's glass flip light/dark while scrolling); use
+  `scrollEdgeEffectStyle`/`scrollEdgeEffectHidden`. Height cap and "More" hint math live in `PanelHeightRule` (Core).
 - The helper banner is a `safeAreaInset` on the page ScrollView. Stacked above it, the ScrollView's square clip edge cut into the banner's rounded glass.
 - Use `Color.primary` (not `.white`) for overlays so Light/Dark/System themes work.
 

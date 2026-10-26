@@ -21,7 +21,7 @@ struct TutorialSheet: View {
                     Capsule().fill(i == step ? Color.accentColor : Color.primary.opacity(0.18)).frame(width: i == step ? 22 : 8, height: 8)
                 }
                 Spacer()
-                Button(skipTitle) { skip() }.buttonStyle(.plain).foregroundStyle(.secondary)
+                if !skipTitle.isEmpty { Button(skipTitle) { skip() }.buttonStyle(.plain).foregroundStyle(.secondary) }
             }
             content.frame(maxWidth: .infinity, minHeight: 300, alignment: .topLeading)
             HStack {

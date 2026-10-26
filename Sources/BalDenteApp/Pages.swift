@@ -93,6 +93,7 @@ enum SettingsIndex {
             i("Wi-Fi networks", "Networks that put you in a zone. Open a zone to edit them.", ["ssid", "router", "bssid", "add current network"], .zones, anchor: "Zones"),
             i("Saved place", "Switch zones by location with a map circle. Open a zone to set it.", ["location", "radius", "gps", "geofence", "map"], .zones, anchor: "Zones"),
             // Charging tools
+            i("Time above 80%", "Hours a week each zone keeps the battery above 80%, with a suggestion to lower it.", ["wear", "zone", "hours", "high charge", "suggest"], .history),
             i("Ready by", "Reach a chosen charge before you leave each day.", ["schedule", "departure", "leave", "alarm", "weekday", "wake"], .charging),
             i("Heat Protection", "Pause charging when the battery gets hot.", ["temperature", "thermal", "hot", "cool", "celsius"], .charging),
             i("Heat limit", "The temperature at which charging pauses.", ["celsius", "degrees", "threshold"], .charging, anchor: "Heat Protection"),

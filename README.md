@@ -87,6 +87,7 @@ four dots at the bottom are the volume.
   for whichever zone is active (or "Everywhere else").
 - **Top Up to 100%** for a trip, then back to your zone's limit.
 - **Travel mode:** hold 100% for 24 hours, then return to normal.
+- **Charge normally for a while:** from the menu bar panel's clock button, lift the limit for 1, 2, 4 or 24 hours; it ends on its own.
 - **Ready by:** per-day schedule (days, leave time, target charge, optionally only in one zone). Charging is timed to
   finish just as you leave, and the Mac wakes itself to start when needed. If a zone-limited schedule can't start because another
   limit is active, you get a notification instead of finding out at the door. Within a day of leaving, Overview shows when charging
@@ -128,16 +129,21 @@ four dots at the bottom are the volume.
   answering. Mute any kind separately.
 - **Recent changes** on Overview lists what changed, when and why, and survives restarts.
 - A short, skippable **guided tour** on first launch that spotlights each control in the real window (replay it from General, About
-  or the Help menu), and a **What's New** sheet after each update.
+  or the Help menu), and a **What's New** sheet after each update. Tour steps can do the thing they describe: allow Location,
+  add your current Wi-Fi to Home in one click, or open the menu bar panel.
 
 **Status panel** (click the icon, or set a global shortcut)
 - Battery, Network, Bluetooth, Volume, plus optional Microphone, Input Source and VPN sections, reorderable and hideable.
+- A compact panel (at most 520 pt tall) that fades at the bottom and shows a "More" button when there's more to scroll; Settings and Quit stay pinned.
+- Zone pins (they fold into one menu when you have many zones), Top Up, and a clock menu to charge normally for a while.
 - Local IP address, Bluetooth device battery levels, a Bluetooth on/off switch, scroll to change volume (natural scrolling option),
   output device list.
 
 **History and health**
 - Daily log of battery health and cycle count with charts, a **Battery Health Advisor** built from Apple's published figures
   for your Mac model, and CSV export. Reset the log after a battery replacement.
+- **Time above 80% per zone:** hours each zone kept the battery above 80% this week. When one zone does it a lot, BalDente suggests
+  lowering its limit to 80% (only when you tap).
 
 **Look and feel**
 - Background follows the active zone, or pick one of 20 color presets, or choose your own colors, in four styles (Aurora, Gradient, Spotlight, Midnight); optional animation; Light, Dark or System window theme.

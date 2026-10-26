@@ -13,6 +13,7 @@ struct HistoryPage: View {
         VStack(alignment: .leading, spacing: 18) {
           MasonryLayout(minColumn: 460) {
             if !loaded { ProgressView().controlSize(.small) } else { advisor }
+            if loaded { zoneWear }
             if loaded {
                 if points.count < 2 {
                 SettingsGroup("Battery History") {
@@ -39,6 +40,41 @@ struct HistoryPage: View {
         let csv = await Task.detached { try? String(contentsOf: Model.historyURL, encoding: .utf8) }.value
         points = HealthHistory.downsample(HealthHistory.parse(csv ?? ""), max: 200)
         loaded = true
+    }
+
+    /// Hours above 80% per zone this week, and the "lower it?" suggestion when one zone keeps the battery high.
+    private var zoneWear: some View {
+        let rows = model.zoneWear.weekly()
+        let top = max(rows.first?.hours ?? 0, 1)
+        return SettingsGroup("Time above 80%") {
+            if rows.isEmpty {
+                Text("Nothing yet. This week's hours above \(ZoneWear.threshold)% show here per zone; Top Up and Travel Mode don't count.")
+                    .font(.callout).foregroundStyle(.secondary)
+            } else {
+                Text("Last 7 days. A battery held high wears faster, so a zone with many hours here is worth a lower limit.")
+                    .font(.callout).foregroundStyle(.secondary)
+                ForEach(rows, id: \.zone) { r in
+                    HStack(spacing: 10) {
+                        Text(r.zone == "Default" ? "Everywhere else" : r.zone).frame(width: 120, alignment: .leading).lineLimit(1)
+                        GeometryReader { g in
+                            Capsule().fill(Color.orange.gradient).frame(width: max(4, g.size.width * r.hours / top))
+                        }.frame(height: 8)
+                        Text(r.hours < 1 ? "<1 h" : "\(Int(r.hours.rounded())) h").monospacedDigit().foregroundStyle(.secondary)
+                            .frame(width: 44, alignment: .trailing)
+                    }
+                }
+            }
+            if let s = model.wearSuggestion {
+                VStack(alignment: .leading, spacing: 8) {
+                    Label(s.text, systemImage: "lightbulb.fill").font(.callout).fixedSize(horizontal: false, vertical: true)
+                    HStack {
+                        Button("Lower to \(WearSuggestion.newUpper)%") { model.acceptWearSuggestion() }.buttonStyle(.glassProminent).tint(.orange)
+                        Button("Not now") { model.dismissWearSuggestion() }.buttonStyle(.glass)
+                    }
+                }
+                .padding(.top, 4)
+            }
+        }
     }
 
     private var manage: some View {

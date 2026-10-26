@@ -71,3 +71,19 @@ public enum TutorialVersion {
     /// A new install sees it; so does anyone who saw an older tour. Upgraders from before the tour existed get What's New instead.
     public static func shouldShow(seen: Int, firstLaunch: Bool) -> Bool { seen < current && (firstLaunch || seen > 0) }
 }
+
+/// "Charge normally for…": a timed Travel Mode (100%), so it needs nothing new from the helper and ends on its own.
+public enum LimitPause {
+    public static let options: [(label: String, hours: Int)] = [("1 hour", 1), ("2 hours", 2), ("4 hours", 4), ("24 hours", 24)]
+
+    public static func end(hours: Int, from now: Date) -> Date { now.addingTimeInterval(TimeInterval(max(1, hours)) * 3600) }
+
+    /// "until 3:40 PM", or "until Tue 3:40 PM" when it ends on another day.
+    public static func untilText(_ end: Date, now: Date, calendar: Calendar = .current) -> String {
+        let f = DateFormatter()
+        f.locale = calendar.locale ?? .current
+        f.timeZone = calendar.timeZone
+        f.setLocalizedDateFormatFromTemplate(calendar.isDate(end, inSameDayAs: now) ? "jmm" : "EEEjmm")
+        return "until " + f.string(from: end)
+    }
+}

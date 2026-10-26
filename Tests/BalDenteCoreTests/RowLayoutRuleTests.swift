@@ -32,3 +32,18 @@ final class ColumnRuleTests: XCTestCase {
         XCTAssertEqual(ColumnRule.count(width: .infinity, minColumn: 380, spacing: 18), 1)
     }
 }
+
+final class PanelHeightRuleTests: XCTestCase {
+    func testCapsOnTallScreens() { XCTAssertEqual(PanelHeightRule.maxHeight(screen: 1400), 520) }
+    func testShortScreensKeepMargin() { XCTAssertEqual(PanelHeightRule.maxHeight(screen: 500), 460) }
+    func testNeverTiny() { XCTAssertEqual(PanelHeightRule.maxHeight(screen: 100), 200) }
+    func testHiddenBelow() {
+        XCTAssertEqual(PanelHeightRule.hiddenBelow(contentHeight: 900, offset: 0, visibleHeight: 480), 420)
+        XCTAssertEqual(PanelHeightRule.hiddenBelow(contentHeight: 900, offset: 430, visibleHeight: 480), 0)
+        XCTAssertEqual(PanelHeightRule.hiddenBelow(contentHeight: 300, offset: 0, visibleHeight: 480), 0)
+    }
+    func testHint() {
+        XCTAssertTrue(PanelHeightRule.showsMoreHint(hiddenBelow: 100))
+        XCTAssertFalse(PanelHeightRule.showsMoreHint(hiddenBelow: 5))
+    }
+}

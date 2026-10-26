@@ -15,3 +15,19 @@ public enum ColumnRule {
         return max(1, min(maxColumns, Int(((width + spacing) / (minColumn + spacing)).rounded(.down))))
     }
 }
+
+/// How tall the menu bar panel gets, and when it shows the "more below" hint.
+public enum PanelHeightRule {
+    /// The panel never grows past `cap` points, and stays `margin` points clear of the bottom of a short screen.
+    public static func maxHeight(screen: CGFloat, cap: CGFloat = 520, margin: CGFloat = 40) -> CGFloat {
+        max(200, min(cap, screen - margin))
+    }
+
+    /// Points of content still hidden below the visible part of the scroll view.
+    public static func hiddenBelow(contentHeight: CGFloat, offset: CGFloat, visibleHeight: CGFloat) -> CGFloat {
+        max(0, contentHeight - offset - visibleHeight)
+    }
+
+    /// Show the hint while more than a sliver of content is still below.
+    public static func showsMoreHint(hiddenBelow: CGFloat, threshold: CGFloat = 12) -> Bool { hiddenBelow > threshold }
+}

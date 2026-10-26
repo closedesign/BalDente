@@ -23,30 +23,63 @@ struct StatusPanel: View {
     @ObservedObject var model: Model
     @ObservedObject var system: SystemMonitor
 
+    @State private var hiddenBelow: CGFloat = 0
+    @State private var position = ScrollPosition(edge: .top)
+
     var body: some View {
-        let maxHeight = (NSScreen.main?.visibleFrame.height ?? 800) - 40
-        ScrollView {
-            VStack(spacing: 10) {
-                ChargingHeader(model: model)
-                ForEach(model.trio.visibleSections) { section in
-                    switch section {
-                    case .battery: BatterySection(model: model, system: system)
-                    case .network: NetworkSection(model: model, system: system)
-                    case .bluetooth: BluetoothSection(model: model, system: system)
-                    case .volume: VolumeSection(model: model, system: system)
-                    case .microphone: MicrophoneSection(system: system)
-                    case .inputSource: InputSourceSection(system: system)
-                    case .vpn: VPNSection(system: system)
+        let maxHeight = PanelHeightRule.maxHeight(screen: NSScreen.main?.visibleFrame.height ?? 800)
+        let moreBelow = PanelHeightRule.showsMoreHint(hiddenBelow: hiddenBelow)
+        VStack(spacing: 0) {
+            ScrollView {
+                VStack(spacing: 10) {
+                    ChargingHeader(model: model)
+                    ForEach(model.trio.visibleSections) { section in
+                        switch section {
+                        case .battery: BatterySection(model: model, system: system)
+                        case .network: NetworkSection(model: model, system: system)
+                        case .bluetooth: BluetoothSection(model: model, system: system)
+                        case .volume: VolumeSection(model: model, system: system)
+                        case .microphone: MicrophoneSection(system: system)
+                        case .inputSource: InputSourceSection(system: system)
+                        case .vpn: VPNSection(system: system)
+                        }
                     }
                 }
-                footer
+                .padding(14)
             }
-            .padding(14)
+            .scrollPosition($position)
+            .scrollIndicators(.visible)
+            .onScrollGeometryChange(for: CGFloat.self) { g in
+                PanelHeightRule.hiddenBelow(contentHeight: g.contentSize.height, offset: g.visibleRect.minY, visibleHeight: g.visibleRect.height)
+            } action: { _, new in
+                if abs(new - hiddenBelow) > 1 { hiddenBelow = new }
+            }
+            // No .mask here: masking renders the scroll view off-screen and the popover's glass flips light/dark as it scrolls.
+            // The system edge effect fades the bottom instead, and the frosted top edge stays off so scrolling doesn't tint the panel.
+            .scrollEdgeEffectHidden(true, for: .top)
+            .scrollEdgeEffectStyle(.soft, for: .bottom)
+            .scrollEdgeEffectHidden(!moreBelow, for: .bottom)
+            .overlay(alignment: .bottom) {
+                if moreBelow {
+                    Button { withAnimation(.easeInOut) { position.scrollTo(edge: .bottom) } } label: {
+                        Label("More", systemImage: "chevron.down").font(.caption.weight(.semibold))
+                    }
+                    .buttonStyle(.borderless).foregroundStyle(.primary)
+                    .padding(.horizontal, 10).padding(.vertical, 4)
+                    .background(.regularMaterial, in: .capsule)
+                    .help("Scroll for more")
+                    .padding(.bottom, 6)
+                    .transition(.opacity)
+                }
+            }
+            .animation(.easeOut(duration: 0.2), value: moreBelow)
+            Divider().opacity(moreBelow ? 1 : 0)
+            footer.padding(.horizontal, 14).padding(.vertical, 10)
         }
-        .scrollIndicators(.never)
         .frame(width: 340)
         .frame(maxHeight: maxHeight)
         .fixedSize(horizontal: false, vertical: true)
+        .onChange(of: model.panelOpen) { _, open in if open { position.scrollTo(edge: .top) } }
         .task(id: model.panelOpen) {
             // Bluetooth batteries have no change notification; refresh them every half minute while the panel is open.
             while model.panelOpen, !Task.isCancelled {
@@ -86,17 +119,24 @@ struct ChargingHeader: View {
                 Spacer(minLength: 0)
             }
             HStack(spacing: 6) {
-                ForEach(model.config.zones) { z in
-                    Button { model.config.overrideZone = model.config.overrideZone == z.name ? nil : z.name } label: {
-                        Image(systemName: Theme.icon(z)).frame(width: 26, height: 22)
-                    }
-                    .buttonStyle(.glass).help(z.name)
-                    .tint(model.target.zoneID == z.id ? Theme.accent(z.name) : nil)
+                // With many zones the pins would squeeze Top Up out of the 340 pt panel; fall back to one menu then.
+                ViewThatFits(in: .horizontal) {
+                    HStack(spacing: 6) { ForEach(model.config.zones) { zoneButton($0) } }
+                    zoneMenu
                 }
-                Spacer()
+                Spacer(minLength: 6)
                 Button { model.toggleTopUp() } label: {
                     Label(model.topUp ? "Cancel" : "Top Up", systemImage: "bolt.fill")
-                }.buttonStyle(.glassProminent).tint(model.accent)
+                }.buttonStyle(.glassProminent).tint(model.accent).fixedSize()
+                pauseMenu
+            }
+            if let end = model.travelUntil {
+                HStack(spacing: 6) {
+                    Image(systemName: "clock").foregroundStyle(.secondary)
+                    Text("Charging normally \(LimitPause.untilText(end, now: Date()))").font(.caption).foregroundStyle(.secondary)
+                    Spacer(minLength: 0)
+                    Button("Resume limits") { model.travelUntil = nil }.buttonStyle(.link).font(.caption)
+                }
             }
             if let hint = model.holdHintText {
                 HStack(alignment: .top, spacing: 6) {
@@ -111,6 +151,47 @@ struct ChargingHeader: View {
             }
         }
         .panelCard()
+    }
+
+    private func pin(_ z: Zone) { model.config.overrideZone = model.config.overrideZone == z.name ? nil : z.name }
+
+    private func zoneButton(_ z: Zone) -> some View {
+        Button { pin(z) } label: { Image(systemName: Theme.icon(z)).frame(width: 26, height: 22) }
+            .buttonStyle(.glass).help(z.name)
+            .tint(model.target.zoneID == z.id ? Theme.accent(z.name) : nil)
+    }
+
+    /// Charge normally for a while; it's a timed Travel Mode, so the helper needs nothing new and it ends by itself.
+    private var pauseMenu: some View {
+        Menu {
+            Section("Charge to 100% for") {
+                ForEach(LimitPause.options, id: \.hours) { o in
+                    Button(o.label) { model.travelUntil = LimitPause.end(hours: o.hours, from: Date()) }
+                }
+            }
+            if model.travelUntil != nil { Button("Resume limits now") { model.travelUntil = nil } }
+        } label: { Image(systemName: "clock") }
+        .menuStyle(.button).buttonStyle(.glass).menuIndicator(.hidden).fixedSize()
+        .help("Charge normally for a while")
+    }
+
+    private var zoneMenu: some View {
+        let active = model.config.zones.first { $0.id == model.target.zoneID }
+        return Menu {
+            Button { model.config.overrideZone = nil } label: {
+                Label("Automatic", systemImage: model.config.overrideZone == nil ? "checkmark" : "location")
+            }
+            Divider()
+            ForEach(model.config.zones) { z in
+                Button { pin(z) } label: {
+                    Label(z.name, systemImage: model.config.overrideZone == z.name ? "checkmark" : Theme.icon(z))
+                }
+            }
+        } label: {
+            Label(active?.name ?? "Zones", systemImage: active.map(Theme.icon) ?? "location")
+        }
+        .menuStyle(.button).buttonStyle(.glass).fixedSize()
+        .tint(active.map { Theme.accent($0.name) })
     }
 }
 

@@ -1,4 +1,5 @@
 import BalDenteCore
+import EventKit
 import SwiftUI
 
 /// One stop of the guided tour: the page to open, the control to spotlight (a `settingAnchor`/`tourAnchor` id), and what to say.
@@ -9,6 +10,14 @@ struct TourStep {
     let tint: Color
     let title: String
     let text: String
+    /// A button in the callout that does the thing the step talks about (add this Wi-Fi, open the panel...).
+    var action: TourAction? = nil
+}
+
+struct TourAction {
+    let label: String
+    let icon: String
+    let run: @MainActor () -> Void
 }
 
 /// The tour walks the real window: it opens each page, scrolls to the control, dims everything else and points at it.
@@ -17,7 +26,8 @@ enum GuidedTour {
     @MainActor static func steps(_ model: Model) -> [TourStep] {
         [
             TourStep(page: .overview, anchor: "Charge ring", icon: "battery.75percent", tint: .green, title: "Your battery at a glance",
-                     text: "The ring is your charge. The bright tick is where charging stops, the faint one where it starts again. In between, the battery rests and the Mac runs from the adapter."),
+                     text: "The ring is your charge. The bright tick is where charging stops, the faint one where it starts again. In between, the battery rests and the Mac runs from the adapter."
+                        + (heldReadsAsBattery(model) ? " On this Mac, macOS may say \"Battery Power\" while the charger is held; that's normal." : "")),
             TourStep(page: .overview, anchor: "Top Up", icon: "bolt.fill", tint: .yellow, title: "Need 100% right now?",
                      text: "Top Up charges to full once, then your normal limit comes back. You never have to change a zone just to leave with a full battery."),
             TourStep(page: .overview, anchor: "Zone tiles", icon: "location.fill", tint: .orange, title: "Zones switch limits for you",
@@ -25,20 +35,46 @@ enum GuidedTour {
             TourStep(page: .zones, anchor: "Zones", icon: "wifi", tint: .orange, title: "Add your home Wi-Fi",
                      text: model.locationAllowed
                         ? "Open a zone with its sliders button and add your current network or a saved place. Home's limit applies once BalDente recognises home."
-                        : "Open a zone with its sliders button and add a network or saved place. Allow Location in General first: macOS hides Wi-Fi names without it."),
+                        : "Open a zone with its sliders button and add a network or saved place. Allow Location first: macOS hides Wi-Fi names without it.",
+                     action: homeAction(model)),
             TourStep(page: .charging, anchor: "Ready by", icon: "alarm.fill", tint: .orange, title: "Be full before you leave",
                      text: "Pick the days, the time you leave and how full you want to be. BalDente also learns when you usually unplug and can suggest this for you."),
             TourStep(page: .charging, anchor: "Calendar Ready by", icon: "calendar.badge.clock", tint: .teal, title: "Or follow your calendar",
-                     text: "Turn this on to be full a set time before your next timed event. Only the start time is read."),
+                     text: calendarBlocked
+                        ? "This can make you full a set time before your next timed event, but calendar access is off. Allow BalDente in System Settings > Privacy & Security > Calendars to use it."
+                        : "Turn this on to be full a set time before your next timed event. Only the start time is read."),
             TourStep(page: .charging, anchor: "Heat Protection", icon: "thermometer.high", tint: .red, title: "Heat Protection",
                      text: "Heat ages a battery even faster than a high charge. Charging pauses above \(model.status?.state.heatLimit ?? HeatLimit.defaultLimit) °C and resumes 3 degrees cooler."),
             TourStep(page: .icon, anchor: "Menu bar preview", icon: "macwindow.on.rectangle", tint: .indigo, title: "The menu bar icon",
-                     text: "This is your menu bar icon. It animates only while macOS says the battery is charging; sitting still at your limit is the limit working. Click it in the menu bar for zones and Top Up."),
+                     text: "This is your menu bar icon. It animates only while macOS says the battery is charging; sitting still at your limit is the limit working. Click it for a panel with zone pins, Top Up and your Wi-Fi, Bluetooth and sound; scroll it for more.",
+                     action: model.statusController == nil ? nil : TourAction(label: "Open the panel", icon: "menubar.arrow.down.rectangle") {
+                         model.statusController?.togglePanel()
+                     }),
             TourStep(page: .overview, anchor: "Recent changes", icon: "list.bullet.rectangle", tint: .mint, title: "Nothing happens behind your back",
                      text: "Every time the limit changes you get a notification with the reason, and it's listed here."),
             TourStep(page: .general, anchor: "Notifications", icon: "bell.badge.fill", tint: .red, title: "You decide what's noisy",
                      text: "Mute any kind of notification here. Replay this tour any time from Help → BalDente Tutorial."),
         ]
+    }
+
+    /// Older SMC keys report "Battery Power" while the charger is held; CHIE keeps saying "AC Power".
+    @MainActor private static func heldReadsAsBattery(_ model: Model) -> Bool {
+        guard let b = model.status?.backend else { return false }
+        return !b.contains("CHIE") && b != "unknown"
+    }
+
+    private static var calendarBlocked: Bool {
+        [.denied, .restricted].contains(EKEventStore.authorizationStatus(for: .event))
+    }
+
+    /// One click to do the step: allow Location, or put the current Wi-Fi into Home.
+    @MainActor private static func homeAction(_ model: Model) -> TourAction? {
+        if !model.locationAllowed {
+            return TourAction(label: "Allow Location", icon: "location.fill") { model.requestLocation() }
+        }
+        guard let home = model.config.zones.first(where: { $0.name == "Home" }) ?? model.config.zones.first,
+              let ssid = model.networks.first, !home.networks.contains(ssid) else { return nil }
+        return TourAction(label: "Add \(ssid) to \(home.name)", icon: "plus.circle.fill") { model.addCurrentNetwork(to: home.id) }
     }
 }
 
@@ -97,7 +133,7 @@ struct TourOverlay: View {
 
     /// Below the control when there's room, otherwise above it; centred when there's nothing to point at.
     static func calloutCenter(hole: CGRect?, size: CGSize) -> CGPoint {
-        let h: CGFloat = 220, w: CGFloat = 380, m: CGFloat = 20
+        let h: CGFloat = 260, w: CGFloat = 380, m: CGFloat = 20
         guard let r = hole else { return CGPoint(x: size.width / 2, y: size.height / 2) }
         let x = min(max(r.midX, w / 2 + m), size.width - w / 2 - m)
         if r.maxY + m + h <= size.height { return CGPoint(x: x, y: r.maxY + m + h / 2) }
@@ -118,6 +154,9 @@ struct TourOverlay: View {
                 }
             }
             Text(step.text).font(.callout).fixedSize(horizontal: false, vertical: true)
+            if let a = step.action {
+                Button { a.run() } label: { Label(a.label, systemImage: a.icon) }.buttonStyle(.glass).tint(step.tint)
+            }
             HStack(spacing: 8) {
                 Button("End tour") { model.endTour() }.buttonStyle(.plain).foregroundStyle(.secondary).keyboardShortcut(.cancelAction)
                 Spacer()

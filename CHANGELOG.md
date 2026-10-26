@@ -4,6 +4,16 @@
 BalDente stays on 0.x until: it is notarized, it has been tested on at least three Mac models and two macOS versions, it has had a week of daily use
 without a charging bug, and the helper installs, updates and uninstalls cleanly on a fresh account.
 
+## 0.13 (pre-release)
+- **Shorter menu bar panel:** it now stops at 520 points instead of filling the screen height, and Settings, Dashboard and Quit stay pinned at the bottom.
+- **Obvious scrolling:** when more sections are below, the panel fades out at the bottom, shows the scroll bar and a **More** button that scrolls down for you.
+- **Charge normally for a while:** a clock button next to Top Up lifts the limit for 1, 2, 4 or 24 hours, then it comes back by itself.
+- **Time above 80% per zone:** Battery History shows how many hours each zone held the battery above 80% this week, and suggests lowering a zone that does it a lot (only when you tap).
+- **Tour:** steps now have buttons that do the thing: allow Location, add your current Wi-Fi to Home, or open the menu bar panel. The Calendar step says when access is off, and Macs whose older charging keys report "Battery Power" while held are told that's normal.
+- **Fix:** the panel no longer changes from dark to light as you scroll.
+- **Fix:** with many zones the zone pins no longer push Top Up out of the panel; they fold into one menu.
+- **Fix:** the tutorial's last page no longer has an invisible Skip button.
+
 ## 0.12 (pre-release)
 - **Fix:** the charging wave on the menu bar ring is now a single crest that travels along the filled arc and repeats, instead of several crests that made the two sides look like separate waves.
 - **Fix:** the ring keeps its normal green while charging; the wave no longer darkens it.

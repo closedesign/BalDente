@@ -16,6 +16,7 @@ final class Model: NSObject, ObservableObject, CLLocationManagerDelegate, UNUser
             config.save()
             if oldValue.zones.map(\.place) != config.zones.map(\.place) { syncRegions() }
             if networkSuggestion != nil, oldValue.zones.map(\.networks) != config.zones.map(\.networks) { evaluateNetworkHint() }
+            if wearSuggestion != nil { evaluateWear() }
             var same = oldValue; same.appearance = config.appearance
             if same != config { refreshStatus() }     // appearance tweaks must not trigger daemon traffic
         }
@@ -193,6 +194,12 @@ final class Model: NSObject, ObservableObject, CLLocationManagerDelegate, UNUser
     @Published private(set) var networkSuggestion: NetworkSuggestion?
     private var networkLog = (try? Data(contentsOf: Model.networkLogURL)).flatMap { try? JSONDecoder().decode(NetworkLog.self, from: $0) } ?? NetworkLog()
     private var habits = Model.loadHabits()
+    /// Time above 80% per zone this week. Not @Published: it changes every refresh and only History reads it.
+    private(set) var zoneWear = (try? Data(contentsOf: Model.zoneWearURL)).flatMap { try? JSONDecoder().decode(ZoneWear.self, from: $0) } ?? ZoneWear()
+    /// A zone that keeps the battery above 80% for many hours a week. Suggest only: lowering it is the user's tap.
+    @Published private(set) var wearSuggestion: WearSuggestion?
+    private var lastWearSample: Date?
+    private var wearUnsaved: TimeInterval = 0
     /// An unplug waiting for a fresh status: with older SMC keys a held charger also looks unplugged, so it's confirmed first.
     private var pendingUnplug: Date?
     private var habitsChecked = false
@@ -398,6 +405,7 @@ final class Model: NSObject, ObservableObject, CLLocationManagerDelegate, UNUser
             if percent >= 100 { topUp = false } else { t = Target(label: "Top Up", upper: 100, lower: 99) }
         }
         target = t
+        recordWear(t)
         maybeAutoDischarge(t)
         let label = t.wireLabel
         let needsSend = status.map { t != lastSent || $0.state.upper != t.upper || $0.state.lower != t.lower || $0.state.label != label } ?? false
@@ -427,7 +435,7 @@ final class Model: NSObject, ObservableObject, CLLocationManagerDelegate, UNUser
         trackSettings()
         smartChecks()
         sideEffects()
-        if !habitsChecked, status != nil { habitsChecked = true; evaluateHabits(); evaluateNetworkHint() }
+        if !habitsChecked, status != nil { habitsChecked = true; evaluateHabits(); evaluateNetworkHint(); evaluateWear() }
         if refreshAgain { refreshAgain = false; refreshStatus() }
     }
 
@@ -843,6 +851,9 @@ final class Model: NSObject, ObservableObject, CLLocationManagerDelegate, UNUser
         try? FileManager.default.removeItem(at: Self.habitsURL)
         networkLog = NetworkLog(); networkSuggestion = nil
         try? FileManager.default.removeItem(at: Self.networkLogURL)
+        zoneWear = ZoneWear(); wearSuggestion = nil; wearUnsaved = 0
+        try? FileManager.default.removeItem(at: Self.zoneWearURL)
+        UserDefaults.standard.removeObject(forKey: "wearDismissed")
         for k in ["networkSnoozeUntil", "networkDismissed", "networkNotified"] { UserDefaults.standard.removeObject(forKey: k) }
         for k in ["habitSnoozeUntil", "habitDismissed", "habitNotified"] { UserDefaults.standard.removeObject(forKey: k) }
         habitSuggestion = nil
@@ -954,6 +965,50 @@ final class Model: NSObject, ObservableObject, CLLocationManagerDelegate, UNUser
         let d = UserDefaults.standard
         d.set((d.stringArray(forKey: "networkDismissed") ?? []) + [s.network.lowercased()], forKey: "networkDismissed")
         networkSuggestion = nil
+    }
+
+    // MARK: Zone wear
+
+    nonisolated static var zoneWearURL: URL { Config.url.deletingLastPathComponent().appendingPathComponent("zone-wear.json") }
+
+    /// Piggybacks on the 20 s refresh; written to disk every ten minutes of counted time, not every sample.
+    private func recordWear(_ t: Target) {
+        let now = Date()
+        defer { lastWearSample = now }
+        guard let last = lastWearSample, status != nil else { return }
+        let step = now.timeIntervalSince(last)
+        guard zoneWear.record(zone: t.label, percent: percent, elapsed: step, at: now) else { return }
+        wearUnsaved += step
+        if wearUnsaved >= 600 { saveWear(); evaluateWear() }
+    }
+
+    private func saveWear() {
+        wearUnsaved = 0
+        try? FileManager.default.createDirectory(at: Self.zoneWearURL.deletingLastPathComponent(), withIntermediateDirectories: true)
+        if let d = try? JSONEncoder().encode(zoneWear) { try? d.write(to: Self.zoneWearURL, options: .atomic) }
+    }
+
+    func evaluateWear() {
+        let dismissed = Set(UserDefaults.standard.stringArray(forKey: "wearDismissed") ?? [])
+        wearSuggestion = habitsEnabled ? WearSuggestion.suggest(zoneWear, config: config, dismissed: dismissed) : nil
+    }
+
+    /// The user's tap: lower the suggested zone (or Everywhere else) to 80/75.
+    func acceptWearSuggestion() {
+        guard let s = wearSuggestion else { return }
+        if s.zone == "Default" {
+            config.defaultUpper = WearSuggestion.newUpper; config.defaultLower = min(config.defaultLower, WearSuggestion.newLower)
+        } else if let i = config.zones.firstIndex(where: { $0.name == s.zone }) {
+            config.zones[i].upper = WearSuggestion.newUpper; config.zones[i].lower = min(config.zones[i].lower, WearSuggestion.newLower)
+        }
+        wearSuggestion = nil
+    }
+
+    func dismissWearSuggestion() {
+        guard let s = wearSuggestion else { return }
+        let d = UserDefaults.standard
+        d.set((d.stringArray(forKey: "wearDismissed") ?? []) + [s.zone], forKey: "wearDismissed")
+        wearSuggestion = nil
     }
 
     // MARK: Look and feel

@@ -168,3 +168,17 @@ final class OnboardingTests: XCTestCase {
         XCTAssertTrue(HealthHistory.parse("date,health_percent,cycles,battery_percent\n").isEmpty)
     }
 }
+
+final class LimitPauseTests: XCTestCase {
+    func testEnd() {
+        let now = Date(timeIntervalSince1970: 1_000_000)
+        XCTAssertEqual(LimitPause.end(hours: 2, from: now).timeIntervalSince(now), 7200)
+        XCTAssertEqual(LimitPause.end(hours: 0, from: now).timeIntervalSince(now), 3600)
+    }
+    func testUntilTextAddsDayOnlyWhenNeeded() {
+        var cal = Calendar(identifier: .gregorian); cal.timeZone = TimeZone(identifier: "UTC")!; cal.locale = Locale(identifier: "en_US")
+        let now = cal.date(from: DateComponents(year: 2026, month: 10, day: 26, hour: 10))!
+        XCTAssertEqual(LimitPause.untilText(now.addingTimeInterval(7200), now: now, calendar: cal).replacingOccurrences(of: "\u{202F}", with: " "), "until 12:00 PM")
+        XCTAssertTrue(LimitPause.untilText(now.addingTimeInterval(86400), now: now, calendar: cal).hasPrefix("until Tue"))
+    }
+}
