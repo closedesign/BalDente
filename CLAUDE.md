@@ -17,6 +17,8 @@ project file. Not a git repo yet — if you add one, use `.gitignore` for `.buil
   (menu bar pages). `Pages.swift` holds `SettingsPage` and `SettingsIndex` (the searchable list). `HistoryPage.swift` charts the daily log, shows the 80%-health projection, and offers export/reset (parsing, per-day dedupe, summary and projection math in `BalDenteCore/History.swift`, unit-tested); `CalendarReady.swift`
   sets Ready by from EventKit (event-driven, no polling; slot math in `ReadyPlan`). `Compact.swift` is the dense alternative layout. `Tutorial.swift` has the first-run intro sheet and What's New; `GuidedTour.swift` is the spotlight tour (steps point at
   `settingAnchor`/`tourAnchor` ids; anchors use `transformAnchorPreference` so a group's anchor doesn't hide its rows'). Add a tour step by anchoring the view and adding a `TourStep`. `Trio/` also has the status item controller, renderer, panel and system monitor.
+- Helper-side extras (all behind new `baldented` commands, so they need a helper update): `Tasks.swift` (`ScheduledTask` recurrence math, `TaskBook`, wire format; daemon runs due tasks in `runDueTasks`, history in `taskLog`), sleep hooks (`Hooks.swift`: C callbacks must live outside `main.swift`), `MagSafeLED` (`ACLC`), `LeaveTime` (travel time; slots always store *leave* times and `ChargeSchedule.travelMinutes` is display metadata only).
+  App-side: `AutoDischarge.swift`, `AutomationURL.swift` (`baldente://`, parsed in Core, run by `Model.run`), `AutomationState.swift` (`baldente get`), `ReadyPreview.swift` (Overview "Leaving" card), `PowerFlow.swift`, `AutomationCards.swift` (Sleep, Schedule, LED cards).
 - Keeping users informed (all UI-free, unit-tested in Core): `Onboarding.swift` (defaults explainer read from `Config()`/`HeatLimit`,
   the "80% everywhere" preset, the hold hint, `TutorialVersion`), `HabitPlanner.swift` (unplug history in `habits.json`, suggestion math), `NetworkHints.swift` (unknown Wi-Fi seen often → "add it to a zone?", `network-habits.json`),
   `Activity.swift` (`ChangeEvent` wording + `NotifyCategory`, the Recent changes log in `activity.json`), `WhatsNew.swift` (CHANGELOG section parser).
@@ -99,6 +101,11 @@ There's no Xcode project — everything goes through `swift build`/`swift test` 
 - `UpdateCheck` (Core) parses GitHub releases; `UpdatesView`/`Updater.swift` (App) show it in About and do the install swap. Install only works when a release has a
   `BalDente.dmg` asset from `closedesign/BalDente` (attach `dist/BalDente.dmg` when publishing). Settings never live in the bundle, so replacing it is safe.
 - Keep every persisted type decoding with `decodeIfPresent` defaults; `SettingsBackup.swift` snapshots config per version and `trackSettings` verifies after an update.
+
+- New fields on `Status`/`LimiterState` must be optional or custom-decoded: an old helper must not make a new app think the helper is offline, and the reverse.
+- Every new helper command parses fixed tokens with range checks (the socket buffer is 512 bytes); never decode JSON from the socket.
+- Scheduled tasks never set the limit (zones own it and the app re-sends it every refresh). The LED key is only written once the user picks a mode (`lastLED`).
+- `AppIntents` need Xcode's metadata step, which SwiftPM does not run, so Shortcuts works through `baldente://` and the CLI instead.
 
 ## Battery data
 - Health % = `NominalChargeCapacity / DesignCapacity` (what System Settings shows; `FullChargeCapacity` reads ~2 points lower). Legacy keys are fallbacks only.

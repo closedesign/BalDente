@@ -91,6 +91,16 @@ four dots at the bottom are the volume.
   finish just as you leave, and the Mac wakes itself to start when needed. If a zone-limited schedule can't start because another
   limit is active, you get a notification instead of finding out at the door. Within a day of leaving, Overview shows when charging
   will start, or why it won't (wrong zone, not plugged in).
+- **Travel time:** tell Ready by when you must *arrive* and how long the trip takes; it finishes charging when you leave. Overview's
+  "Leaving" card also warns if the battery is too hot for the top-up to run.
+- **Schedule:** run Top Up, Discharge, Calibration or Low Power Mode on a schedule (daily, weekdays, weekly, every two weeks, monthly,
+  yearly, once), with catch-up for a Mac that was asleep and a history of what ran. Needs the charger in and the Mac not shut down.
+- **Sleep:** stop charging as the Mac goes to sleep, and/or keep it awake only until it reaches the limit.
+- **Automatic Discharge:** when your limit drops below the battery, drain to it on its own.
+- **MagSafe LED (experimental):** green at the limit, orange while charging, or pick your own colour for each state, on Macs that expose the LED.
+- **Gauge and Power flow:** the battery's own percentage next to macOS's, and watts from charger and battery to the Mac.
+- **Automation:** `baldente://` links for Shortcuts' "Open URLs" action and `baldente get state|percent|limit|temperature|zone` for
+  "Run Shell Script". No native Shortcuts actions yet.
 - **Calendar Ready by:** reads your next timed event (Calendar access, event start time only) and gets you full a set time before.
 - **Habit suggestions:** learns when you usually unplug, per weekday, and suggests a Ready by plan ("You usually unplug around 8:10
   on weekdays. Charge to 100% by 8:00?"). It only suggests: nothing changes until you tap Accept. The last 8 weeks of unplug times

@@ -66,6 +66,8 @@ public struct ChargeSchedule: Codable, Equatable {
     public var wakeAt: String?              // wake we scheduled with pmset, so we can replace it
     /// Only run while this zone is active (nil = anywhere).
     public var onlyZone: String?
+    /// Minutes of travel between leaving and arriving, kept so the editor can show arrival times. Slots always hold *leave* times.
+    public var travelMinutes = 0
     public init() {}
 
     private enum Legacy: String, CodingKey { case weekdays, hour, minute }
@@ -77,6 +79,7 @@ public struct ChargeSchedule: Codable, Equatable {
         ran = try c.decodeIfPresent([String].self, forKey: .ran) ?? []
         wakeAt = try c.decodeIfPresent(String.self, forKey: .wakeAt)
         onlyZone = try c.decodeIfPresent(String.self, forKey: .onlyZone)
+        travelMinutes = LeaveTime.clampTravel(try c.decodeIfPresent(Int.self, forKey: .travelMinutes) ?? 0)
         if let s = try c.decodeIfPresent([Slot].self, forKey: .slots) { slots = s }
         else {
             let l = try d.container(keyedBy: Legacy.self)
@@ -138,7 +141,20 @@ public struct LimiterState: Codable, Equatable {
     /// One-off calibration planned for a specific moment, e.g. tonight at 3 AM.
     public var calibrateAt: Date?
     public var task = TaskState()
+    /// Keep the charger off while the Mac sleeps (above `sleepFloor`), so it does not charge past the limit asleep.
+    public var stopWhenSleeping = false
+    /// Hold the Mac awake while it is charging toward the limit, so it reaches it before sleeping.
+    public var stayAwake = false
+    public var led = MagSafeLED.system
+    /// Colours for `MagSafeLED.custom`.
+    public var ledAtLimit = LEDColor.green
+    public var ledCharging = LEDColor.orange
+    public var tasks: [ScheduledTask] = []
+    public var taskLog: [TaskRun] = []
     public init() {}
+
+    /// Below this the sleep stop is skipped: a Mac asleep with its charger cut must never run flat.
+    public static let sleepFloor = 20
 
     // Old state files lack newer keys; keep their values and default the rest.
     public init(from d: Decoder) throws {
@@ -154,6 +170,13 @@ public struct LimiterState: Codable, Equatable {
         chargeSchedule = try c.decodeIfPresent(ChargeSchedule.self, forKey: .chargeSchedule) ?? ChargeSchedule()
         calibrateAt = try c.decodeIfPresent(Date.self, forKey: .calibrateAt)
         task = try c.decodeIfPresent(TaskState.self, forKey: .task) ?? TaskState()
+        stopWhenSleeping = try c.decodeIfPresent(Bool.self, forKey: .stopWhenSleeping) ?? false
+        stayAwake = try c.decodeIfPresent(Bool.self, forKey: .stayAwake) ?? false
+        led = try c.decodeIfPresent(MagSafeLED.self, forKey: .led) ?? .system
+        ledAtLimit = try c.decodeIfPresent(LEDColor.self, forKey: .ledAtLimit) ?? .green
+        ledCharging = try c.decodeIfPresent(LEDColor.self, forKey: .ledCharging) ?? .orange
+        tasks = try c.decodeIfPresent([ScheduledTask].self, forKey: .tasks) ?? []
+        taskLog = try c.decodeIfPresent([TaskRun].self, forKey: .taskLog) ?? []
     }
 }
 
@@ -164,9 +187,12 @@ public struct Status: Codable {
     public var backend: String
     public var tempC: Double?
     public var heatHold = false
+    /// Whether this Mac exposes the MagSafe LED key. Optional so an older helper's status still decodes.
+    public var ledAvailable: Bool?
 
-    public init(percent: Int, adapterOn: Bool, state: LimiterState, backend: String, tempC: Double? = nil, heatHold: Bool = false) {
+    public init(percent: Int, adapterOn: Bool, state: LimiterState, backend: String, tempC: Double? = nil, heatHold: Bool = false,
+                ledAvailable: Bool? = nil) {
         self.percent = percent; self.adapterOn = adapterOn; self.state = state; self.backend = backend
-        self.tempC = tempC; self.heatHold = heatHold
+        self.tempC = tempC; self.heatHold = heatHold; self.ledAvailable = ledAvailable
     }
 }

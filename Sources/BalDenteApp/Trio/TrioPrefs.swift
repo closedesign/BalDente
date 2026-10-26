@@ -50,7 +50,7 @@ struct TrioPrefs: Codable, Equatable {
 
     // App icon
     var placement = Placement.menuBar
-    var iconSize = 22.0                      // 16...36 pt
+    var iconSize = 30.0                      // 16...36 pt
     var stroke = Stroke.regular
     var dockBackground = DockBackground.system
 
@@ -69,7 +69,7 @@ struct TrioPrefs: Codable, Equatable {
     var percentInMiddle = false
     var showTimeRemaining = true             // minutes to full / empty as text beside the icon
     var showPercentWhileCharging = true      // "58%" as text beside the icon while the bolt or plug is in the ring
-    var chargeWaveSpeed = 1.0                // 0.25...3, multiplier for the wave rippling along the ring
+    var chargeWaveSpeed = 1.0                // 0.2...6 as shown; 1× is WaveClock.baseline of the raw clock rate
 
     // Network
     var middleSlot = MiddleSlot.automatic
@@ -112,8 +112,11 @@ struct TrioPrefs: Codable, Equatable {
         // Overlay what was saved on top of the defaults, so new settings get their default instead of failing to decode.
         let ud = UserDefaults.standard
         // Version 2 turned "Show time remaining" on by default; the old default (off) was never a choice, so move it once.
-        let migrate = ud.integer(forKey: "trioPrefsVersion") < 2
-        ud.set(2, forKey: "trioPrefsVersion")
+        let was = ud.integer(forKey: "trioPrefsVersion")
+        let migrate = was < 2
+        // Version 3 made 30 pt the default icon size; anyone still on the old default (22) moves with it, other sizes stay.
+        let resize = was < 3
+        ud.set(3, forKey: "trioPrefsVersion")
         guard let saved = ud.data(forKey: key),
               let over = (try? JSONSerialization.jsonObject(with: saved)) as? [String: Any],
               let defaults = try? JSONEncoder().encode(TrioPrefs()),
@@ -121,6 +124,7 @@ struct TrioPrefs: Codable, Equatable {
         else { return TrioPrefs() }
         base.merge(over) { _, new in new }
         if migrate { base["showTimeRemaining"] = true }
+        if resize, (base["iconSize"] as? Double) == 22 { base["iconSize"] = 30.0 }
         guard let merged = try? JSONSerialization.data(withJSONObject: base),
               var p = try? JSONDecoder().decode(TrioPrefs.self, from: merged) else { return TrioPrefs() }
         // A section added in a newer version shows up at the end of a saved order.

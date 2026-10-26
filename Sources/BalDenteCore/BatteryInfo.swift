@@ -12,6 +12,9 @@ public struct BatteryInfo {
     public var watts = 0.0
     public var tempC: Double?
     public var plugged = false
+    /// What the battery's own gauge says, to compare with the percentage macOS shows. Nil when this Mac does not expose it.
+    public var hardwarePercent: Int?
+    public var flow: PowerFlow?
 
     public static func read() -> BatteryInfo? {
         let svc = IOServiceGetMatchingService(kIOMainPortDefault, IOServiceMatching("AppleSmartBattery"))
@@ -36,6 +39,17 @@ public struct BatteryInfo {
         i.maxMAh = int(bd["NominalChargeCapacity"]) ?? int(d["NominalChargeCapacity"]) ?? int(d["AppleRawMaxCapacity"])
             ?? int(d["MaxCapacity"]).flatMap { $0 > 100 ? $0 : nil }
         if let design = i.designMAh, let mx = i.maxMAh, design > 0 { i.healthPercent = min(100, Int((Double(mx) * 100 / Double(design)).rounded())) }
+        // The gauge's remaining charge over its full-charge capacity. macOS rounds and smooths this, so the two differ by a few points.
+        if let rem = int(bd["RemainingCapacity"]) ?? int(d["AppleRawCurrentCapacity"]),
+           let full = int(bd["FullChargeCapacity"]) ?? int(d["AppleRawMaxCapacity"]), full > 0, rem >= 0 {
+            i.hardwarePercent = min(100, Int((Double(rem) * 100 / Double(full)).rounded()))
+        }
+        if let t = d["PowerTelemetryData"] as? [String: Any] {
+            func u(_ v: Any?) -> UInt64? { (v as? NSNumber)?.uint64Value }
+            if let pin = u(t["SystemPowerIn"]), let load = u(t["SystemLoad"]), let bat = u(t["BatteryPower"]) {
+                i.flow = PowerFlow(systemPowerInMW: pin, systemLoadMW: load, batteryPowerMW: bat)
+            }
+        }
         i.volts = Double(int(d["Voltage"]) ?? 0) / 1000
         if let a = signed(d["Amperage"]) { i.watts = i.volts * Double(a) / 1000 }
         i.plugged = (d["ExternalConnected"] as? Bool) ?? false

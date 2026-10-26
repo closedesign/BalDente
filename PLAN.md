@@ -15,7 +15,7 @@ actuallymentor/battery (MIT), charlie0129/batt (GPL-2.0), mhaeuser/Battery-Toolk
 2. [ ] Daemon + CLI limiter (backend chosen from the keys the probe finds)
 3. [ ] Zones (Wi-Fi/BSSID/gateway detection, override, notifications)
 4. [ ] Menu bar GUI + settings
-5. [ ] AlDente extras: sailing, heat protection, top up, discharge, calibration, sleep handling
+5. [x] AlDente extras: sailing, heat protection, top up, discharge, calibration, sleep handling (sleep, LED and scheduled tasks need testing on real hardware)
 6. [ ] Packaging: .app bundle, SMAppService helper registration, uninstaller
 
 ## Findings on this Mac (Mac16,1, macOS 27.0.1)

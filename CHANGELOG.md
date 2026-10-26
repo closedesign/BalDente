@@ -4,6 +4,20 @@
 BalDente stays on 0.x until: it is notarized, it has been tested on at least three Mac models and two macOS versions, it has had a week of daily use
 without a charging bug, and the helper installs, updates and uninstalls cleanly on a fresh account.
 
+## 0.9 (pre-release)
+- **Update the helper after installing this version** (General → Charging helper → Update). New helper features need it; the new controls stay greyed out until then.
+- **Schedule:** run Top Up, Discharge, Calibration or Low Power Mode on a schedule (once, daily, weekdays, weekly, every two weeks, monthly, yearly), with "catch up if the Mac was asleep" and a task history. A limit is not a task: zones set the limit.
+- **Sleep:** "Stop charging when sleeping" cuts the charger as the Mac sleeps (not below 20%), and "Stay awake until the limit" keeps the Mac awake only while it charges toward the limit.
+- **Automatic Discharge:** when the limit drops below the battery with the charger in, drain to it on its own. Skips Top Up, Travel mode, running tasks and a Ready by within four hours.
+- **MagSafe LED** (Macs that expose it): green at the limit, orange while charging. Experimental: it writes a new SMC key, and macOS gets the LED back when the helper quits.
+- **Overview:** a Gauge tile (the battery's own percentage next to macOS's) and a Power flow card (charger, battery and Mac watts).
+- **Ready by travel time:** enter when you need to *arrive* plus the travel time and BalDente finishes charging when you leave. Overview's Leaving card also warns when the battery is too hot (over 45 °C) for a top-up to run.
+- **Automation:** `baldente://topup`, `travel/on`, `discharge/60`, `calibrate`, `lowpower/on`, `automatic`, `cancel` links (Shortcuts "Open URLs"), and `baldente get state|percent|limit|temperature|zone` for "Run Shell Script". Every link run is logged in Recent changes. There are no native Shortcuts actions yet (they need an Xcode App Intents build).
+- **MagSafe LED, Custom:** pick the colour for "at the limit" and "while charging" (Default, Off, Green or Orange).
+- Menu bar icon: the default size is now 30 pt (an unchanged 22 pt moves to 30 once; other sizes stay). Wave speed 1× is now half the old rate, which was too fast; the slider runs 0.2× to 6× so the old fastest speed is still reachable.
+- The ring's caption ("Charging" and its bolt) in the menu bar panel is bigger: it was 4.8 pt, now at least 11.5 pt.
+- Fix: new default zones are School 80%/75% and Travel 100%/95%; in the Ready by editor a day switched off could not be switched back on.
+
 ## 0.8 (pre-release)
 - Updates moved to About. When a release has a BalDente.dmg attached, "Install" downloads it, checks it is BalDente at that version and correctly signed, then replaces the app and reopens it. No DMG on the release: a link to the release page instead.
 - After an update BalDente checks that your zones, limits and Ready by match what the old version left, and says so (or what differs).

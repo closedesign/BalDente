@@ -90,7 +90,7 @@ final class CalendarReady: ObservableObject {
         // Only remember a spec the helper actually received; otherwise a helper that was offline would never get it.
         guard model?.status != nil else { needsSync = true; return }
         needsSync = false
-        if spec != lastSpec { lastSpec = spec; model?.cmd("ready zone any"); model?.cmd("ready on \(spec)") }
+        if spec != lastSpec { lastSpec = spec; model?.cmd("ready zone any"); model?.cmd("ready travel 0"); model?.cmd("ready on \(spec)") }
     }
 }
 

@@ -8,6 +8,7 @@ public struct ReadyPreview: Equatable {
         case startingNow
         case needsPower(by: Date)
         case blockedByZone(zone: String, active: String)
+        case tooHot(tempC: Double)
         case alreadyThere
     }
     public var ready: Date
@@ -15,7 +16,7 @@ public struct ReadyPreview: Equatable {
     public var outcome: Outcome
 
     /// Nil when Ready by is off, a top-up is already running, or the next departure is further away than `within`.
-    public static func make(_ cs: ChargeSchedule, activeLabel: String, percent: Int, plugged: Bool, taskActive: Bool, now: Date,
+    public static func make(_ cs: ChargeSchedule, activeLabel: String, percent: Int, plugged: Bool, tempC: Double? = nil, taskActive: Bool, now: Date,
                             within: TimeInterval = 24 * 3600, calendar: Calendar = .current) -> ReadyPreview? {
         guard !taskActive, percent >= 0, let next = cs.nextSlot(after: now, calendar: calendar),
               next.ready.timeIntervalSince(now) <= within else { return nil }
@@ -27,13 +28,14 @@ public struct ReadyPreview: Equatable {
             return result(.blockedByZone(zone: z, active: activeLabel))
         }
         if !plugged { return result(.needsPower(by: start)) }
+        if let t = tempC, t >= Double(HeatLimit.ratedChargeMax) { return result(.tooHot(tempC: t)) }
         return result(now >= start ? .startingNow : .willStart(at: start))
     }
 
     /// True when the card should look like a warning rather than reassurance.
     public var needsAttention: Bool {
         switch outcome {
-        case .blockedByZone, .needsPower: true
+        case .blockedByZone, .needsPower, .tooHot: true
         default: false
         }
     }
@@ -52,6 +54,9 @@ public struct ReadyPreview: Equatable {
             return "Plug in by \(Self.time(by)) so it can reach \(percent)% by \(Self.time(ready))."
         case .blockedByZone(let zone, let active):
             return "This is set for \(ChangeEvent.zoneName(zone)) only, but \(ChangeEvent.zoneName(active)) is active, so it won't charge. Be in \(ChangeEvent.zoneName(zone)) by the start time, or choose Anywhere in Ready by."
+        case .tooHot(let t):
+            return String(format: "The battery is %.0f °C and a top-up pauses above %d °C. Let it cool, or keep the Mac somewhere cooler, so it can reach %d%% by %@.",
+                          t, HeatLimit.ratedChargeMax, percent, Self.time(ready))
         case .alreadyThere:
             return "Already at \(percent)% or more, so nothing needs to charge."
         }

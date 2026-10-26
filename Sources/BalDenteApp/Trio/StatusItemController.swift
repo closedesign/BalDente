@@ -156,7 +156,7 @@ final class StatusItemController: NSObject {
     private var dockAnimates: Bool { dockView != nil && model.trio.dockChargingEffect && chargingAnimates }
 
     /// 8 to 16 frames a second (about 11 at 1x): a slow animation doesn't need 20, and every frame costs a redraw of the icon.
-    private var animationInterval: TimeInterval { 1 / min(16, max(8, 6 + 5 * model.trio.chargeWaveSpeed)) }
+    private var animationInterval: TimeInterval { 1 / min(16, max(8, 6 + 5 * WaveClock.rate(forSetting: model.trio.chargeWaveSpeed))) }
 
     private func updateAnimation() {
         let want = menuAnimates || dockAnimates
@@ -179,7 +179,7 @@ final class StatusItemController: NSObject {
     func currentFrame(gap: CGFloat, boltInGap: Bool, progress: Double) -> ChargingFrame? {
         let now = Date()
         // One clock drives the comet, heartbeat and wave, so the speed setting slows or speeds up the whole effect.
-        let speed = min(WaveClock.speedRange.upperBound, max(WaveClock.speedRange.lowerBound, model.trio.chargeWaveSpeed))
+        let speed = WaveClock.rate(forSetting: model.trio.chargeWaveSpeed)
         let wave = waveClock.advance(now: now, speed: speed, cycle: ChargingFrame.steadyCycle)
         var t = waveClock.elapsed, cycle = ChargingFrame.steadyCycle
         if let e = system.chargeEvent, e.date > animationStart.addingTimeInterval(-1) {

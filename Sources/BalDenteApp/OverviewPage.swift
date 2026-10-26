@@ -190,14 +190,46 @@ struct OverviewPage: View {
     private var stats: some View {
         let i = model.info
         return GlassEffectContainer(spacing: 12) {
+          VStack(alignment: .leading, spacing: 12) {
             LazyVGrid(columns: [GridItem(.adaptive(minimum: 130), spacing: 12)], spacing: 12) {
                 stat("Health", i?.healthPercent.map { "\($0)%" } ?? "–", "heart.fill")
                 stat("Cycles", i.map { "\($0.cycles)" } ?? "–", "arrow.triangle.2.circlepath")
                 stat("Temp", (status?.tempC ?? i?.tempC).map { String(format: "%.1f°", $0) } ?? "–", "thermometer.medium")
                 stat("Power", i.map { String(format: "%+.1f W", $0.watts) } ?? "–", "bolt.horizontal.fill")
                 stat("Capacity", i?.maxMAh.map { "\($0) mAh" } ?? "–", "battery.100percent")
+                stat("Gauge", i?.hardwarePercent.map { "\($0)%" } ?? "–", "gauge.with.needle")
+                    .help("The battery's own reading of its charge. macOS shows \(model.percent)%; the two normally differ by a few points.")
+            }
+            if let f = i?.flow { powerFlow(f) }
+          }
+        }
+    }
+
+    /// Where the power goes right now, as two bars: sources on the left, uses on the right. Refreshes with the 20 s status poll.
+    private func powerFlow(_ f: PowerFlow) -> some View {
+        let total = max(f.fromCharger + f.fromBattery, f.toMac + f.toBattery, 1)
+        func bar(_ label: String, _ w: Double, _ color: Color) -> some View {
+            HStack(spacing: 8) {
+                Text(label).font(.caption).frame(width: 64, alignment: .leading)
+                GeometryReader { g in
+                    RoundedRectangle(cornerRadius: 5).fill(color.gradient).frame(width: max(2, g.size.width * w / total))
+                }.frame(height: 10)
+                Text(String(format: "%.1f W", w)).font(.caption.monospacedDigit()).foregroundStyle(.secondary).frame(width: 56, alignment: .trailing)
             }
         }
+        return VStack(alignment: .leading, spacing: 6) {
+            Label("Power flow", systemImage: "bolt.horizontal.circle.fill").font(.system(.subheadline, design: .rounded).weight(.semibold))
+            Text(f.summary).font(.caption).foregroundStyle(.secondary)
+            if !f.isIdle {
+                if f.fromCharger >= 0.05 { bar("Charger", f.fromCharger, .orange) }
+                if f.fromBattery >= 0.05 { bar("Battery", f.fromBattery, .green) }
+                bar("Mac", f.toMac, .blue)
+                if f.toBattery >= 0.05 { bar("To battery", f.toBattery, .green) }
+            }
+        }
+        .padding(14).frame(maxWidth: .infinity, alignment: .leading)
+        .glassEffect(.regular, in: .rect(cornerRadius: 20))
+        .settingAnchor("Power flow")
     }
 
     private func stat(_ title: String, _ value: String, _ icon: String) -> some View {

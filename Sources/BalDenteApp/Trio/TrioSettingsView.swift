@@ -104,7 +104,7 @@ struct TrioPageView: View {
             }
             SettingRow("waveform.path", .teal, "Wave speed",
                        "How fast the charging animation runs: the glow, the heartbeat and the wave. 1× is the default; lower is slower.") {
-                ValueSlider(value: p.chargeWaveSpeed, range: 0.1...3, step: 0.1) { String(format: "%.1f×", $0) }
+                ValueSlider(value: p.chargeWaveSpeed, range: 0.2...6, step: 0.1) { String(format: "%.1f×", $0) }
             }
             SettingRow("percent", .green, "Show percentage next to the icon while charging",
                        "Adds the battery level as text beside the icon while the ring shows the bolt.") {

@@ -34,6 +34,8 @@ public enum ChangeEvent: Equatable {
     case calibrationDue(days: Int?)
     case helperOffline
     case helperBack
+    /// An action started from a baldente:// link or the command line.
+    case automation(String)
 
     public var category: NotifyCategory {
         switch self {
@@ -41,7 +43,7 @@ public enum ChangeEvent: Equatable {
         case .readyByStarted, .readyByFinished, .readyBySkipped: .readyBy
         case .heat: .heat
         case .habitSuggested, .habitAccepted, .networkSuggested: .habits
-        case .task, .defaultsChosen, .calibrationEnded, .calibrationDue: .manual
+        case .task, .defaultsChosen, .calibrationEnded, .calibrationDue, .automation: .manual
         case .helperOffline, .helperBack: .helper
         }
     }
@@ -79,6 +81,7 @@ public enum ChangeEvent: Equatable {
         case .defaultsChosen(let name): return "Limits set: \(name)"
         case .helperOffline: return "BalDente's helper isn't answering"
         case .helperBack: return "Helper is back"
+        case .automation(let what): return "Shortcut: \(what)"
         }
     }
 
@@ -113,6 +116,7 @@ public enum ChangeEvent: Equatable {
         case .defaultsChosen: return "You can change any zone's limits on the Zones page."
         case .helperOffline: return "Charging limits aren't being applied. Open BalDente > General to reinstall it."
         case .helperBack: return "Charging limits are being applied again."
+        case .automation: return "Started by a baldente:// link, such as from Apple Shortcuts."
         }
     }
 }

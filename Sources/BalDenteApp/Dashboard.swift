@@ -64,6 +64,7 @@ struct RootView: View {
             WhatsNewSheet(model: model, items: model.whatsNew ?? [])
         })
         .onAppear { WindowOpener.action = openWindow }
+        .onOpenURL { if let a = AutomationURL.parse($0) { model.run(a) } }
         .onChange(of: compact) { _, c in
             guard let w = NSApp.windows.first(where: { $0.canBecomeMain && $0.isVisible }) else { return }
             let size = c ? NSSize(width: 520, height: 760) : NSSize(width: 1180, height: 780)
@@ -220,6 +221,7 @@ struct ReadyBySheet: View {
     @State private var times: [Int: Date] = [:]
     @State private var percents: [Int: Int] = [:]
     @State private var zone = ""
+    @State private var travel = 0
 
     private func defaultTime() -> Date { Calendar.current.date(from: DateComponents(hour: 7, minute: 30)) ?? Date() }
     private func time(_ d: Int) -> Binding<Date> { Binding(get: { times[d] ?? defaultTime() }, set: { times[d] = $0 }) }
@@ -228,7 +230,8 @@ struct ReadyBySheet: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
             Text("Ready by").font(.system(size: 28, weight: .bold, design: .rounded))
-            Text("Pick the days, when you leave, and how full you want the battery. Each day is independent.")
+            Text(travel > 0 ? "Pick the days, when you need to arrive, and how full you want the battery. Charging finishes when you leave, \(travel) minutes earlier."
+                            : "Pick the days, when you leave, and how full you want the battery. Each day is independent.")
                 .foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
             Toggle("Charge automatically", isOn: $enabled).toggleStyle(.switch)
             VStack(spacing: 8) {
@@ -258,6 +261,9 @@ struct ReadyBySheet: View {
                     for d in on { times[d] = times[first] ?? defaultTime(); percents[d] = percents[first] ?? 100 }
                 }
             }.buttonStyle(.glass).controlSize(.small)
+            Stepper(value: $travel, in: 0...LeaveTime.maxTravelMinutes, step: 5) {
+                Text(travel == 0 ? "Travel time: none (times are when you leave)" : "Travel time: \(travel) min (times are when you arrive)")
+            }
             Picker("Only when in zone", selection: $zone) {
                 Text("Anywhere").tag("")
                 ForEach(model.config.zones) { Text($0.name).tag($0.name) }
@@ -283,10 +289,13 @@ struct ReadyBySheet: View {
         // The helper always holds a default Monday to Friday schedule, switched off. Opening this sheet means "set it up",
         // so it must start switched on; otherwise the first Save sent "ready off" and nothing was ever scheduled.
         enabled = true
-        on = Set(cs.slots.map(\.weekday))
-        for s in cs.slots {
-            times[s.weekday] = Calendar.current.date(from: DateComponents(hour: s.hour, minute: s.minute))
-            percents[s.weekday] = min(100, max(50, Int((Double(s.percent) / 5).rounded()) * 5))
+        travel = cs.travelMinutes
+        // Slots hold leave times; the editor shows arrival times, which are the same when there is no travel.
+        let shown = cs.slots.map { ($0, LeaveTime.arrive(leaveWeekday: $0.weekday, hour: $0.hour, minute: $0.minute, travel: travel)) }
+        on = Set(shown.map(\.1.weekday))
+        for (s, a) in shown {
+            times[a.weekday] = Calendar.current.date(from: DateComponents(hour: a.hour, minute: a.minute))
+            percents[a.weekday] = min(100, max(50, Int((Double(s.percent) / 5).rounded()) * 5))
         }
         zone = cs.onlyZone ?? ""
     }
@@ -295,9 +304,11 @@ struct ReadyBySheet: View {
         let cal = Calendar.current
         let spec = ChargeSchedule.spec(on.sorted().map { d in
             let c = cal.dateComponents([.hour, .minute], from: times[d] ?? defaultTime())
-            return Slot(weekday: d, hour: c.hour ?? 7, minute: c.minute ?? 30, percent: percents[d] ?? 100)
+            let leave = LeaveTime.leave(arriveWeekday: d, hour: c.hour ?? 7, minute: c.minute ?? 30, travel: travel)
+            return Slot(weekday: leave.weekday, hour: leave.hour, minute: leave.minute, percent: percents[d] ?? 100)
         })
         model.cmd("ready zone \(zone.isEmpty ? "any" : zone)")
+        model.cmd("ready travel \(travel)")
         model.cmd(enabled && !on.isEmpty ? "ready on \(spec)" : "ready off")
         if enabled && !on.isEmpty { model.holdHint.uses += 1 }
     }

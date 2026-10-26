@@ -26,6 +26,7 @@ cat > "$APP/Contents/Info.plist" <<PLIST
 <key>CFBundleVersion</key><string>$BUILD</string>
 <key>LSMinimumSystemVersion</key><string>26.0</string>
 <key>NSHighResolutionCapable</key><true/>
+<key>CFBundleURLTypes</key><array><dict><key>CFBundleURLName</key><string>com.baldente.automation</string><key>CFBundleURLSchemes</key><array><string>baldente</string></array></dict></array>
 <key>LSApplicationCategoryType</key><string>public.app-category.utilities</string>
 <key>NSLocationAlwaysAndWhenInUseUsageDescription</key><string>BalDente watches the areas you save (like Home or School) so it can switch charge limits without using location constantly.</string>
 <key>NSLocationAlwaysUsageDescription</key><string>BalDente watches the areas you save (like Home or School) so it can switch charge limits without using location constantly.</string>

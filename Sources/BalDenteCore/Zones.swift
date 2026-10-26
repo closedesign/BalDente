@@ -67,6 +67,8 @@ public struct Config: Codable, Equatable {
     /// Name of a zone to force regardless of network, or nil for automatic.
     public var overrideZone: String?
     public var appearance: Appearance?
+    /// Start a discharge on its own when the limit drops below the battery. Optional so older config files still decode.
+    public var autoDischarge: Bool?
 
     public init() {
         zones = [

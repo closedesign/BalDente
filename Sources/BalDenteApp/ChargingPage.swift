@@ -42,6 +42,10 @@ struct ChargingPage: View {
                 Slider(value: $dischargeTarget, in: 10...90, step: 5)
                 Button { model.cmd("discharge \(Int(dischargeTarget))") } label: { pill("Start Discharge", "play.fill") }
                     .buttonStyle(.glass).disabled(task != nil || status == nil)
+                Toggle("Discharge automatically", isOn: Binding(get: { model.config.autoDischarge ?? false },
+                       set: { model.config.autoDischarge = $0 })).toggleStyle(.switch).settingAnchor("Automatic Discharge")
+                Text("When your limit drops below the battery, drain to it on its own. Skips Top Up, Travel mode and a Ready by within \(Int(AutoDischarge.readyByQuietHours)) hours.")
+                    .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
             }
             card("Calibration", "gauge.with.dots.needle.50percent", .purple) {
                 Text("Drain to 15%, charge to 100%, rest an hour. Keeps the percentage accurate. Leave it plugged in; the Mac stays awake while it runs.")
@@ -100,6 +104,9 @@ struct ChargingPage: View {
                        set: { model.cmd("lowpower \($0 ? "on" : "off")") })).toggleStyle(.switch).disabled(status == nil)
                 Text("Asks macOS to reduce power use. Applies instantly.").font(.callout).foregroundStyle(.secondary)
             }
+            SleepCard(model: model)
+            ScheduleCard(model: model)
+            if model.status?.ledAvailable == true { LEDCard(model: model) }
         }
         .sheets(model, $sheet)
         .opensReadyBy(model, $sheet)

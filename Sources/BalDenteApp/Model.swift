@@ -54,6 +54,7 @@ final class Model: NSObject, ObservableObject, CLLocationManagerDelegate, UNUser
     private var lastZoneID: UUID?
     private var lastHeatHold = false
     private var lastSkipKey: String?
+    private var lastAutoDischarge: Date?
     private var lastTask: TaskState?
     /// When a calibration last ran its full course (not cancelled). Nil until one finishes with this version.
     @Published private(set) var calibrationDates: [Date] = {
@@ -385,6 +386,7 @@ final class Model: NSObject, ObservableObject, CLLocationManagerDelegate, UNUser
             if percent >= 100 { topUp = false } else { t = Target(label: "Top Up", upper: 100, lower: 99) }
         }
         target = t
+        maybeAutoDischarge(t)
         let label = t.wireLabel
         let needsSend = status.map { t != lastSent || $0.state.upper != t.upper || $0.state.lower != t.lower || $0.state.label != label } ?? false
         guard needsSend else { finishRefresh(); return }
@@ -823,6 +825,7 @@ final class Model: NSObject, ObservableObject, CLLocationManagerDelegate, UNUser
         guard let s = habitSuggestion, let cs = status?.state.chargeSchedule else { return }
         let slots = HabitPlanner.merged(s, into: cs)
         cmd("ready zone any")
+        cmd("ready travel 0")
         cmd("ready on \(ChargeSchedule.spec(slots))")
         holdHint.uses += 1
         habitSuggestion = nil
@@ -937,7 +940,32 @@ final class Model: NSObject, ObservableObject, CLLocationManagerDelegate, UNUser
     var readyPreview: ReadyPreview? {
         guard let st = status?.state else { return nil }
         return ReadyPreview.make(st.chargeSchedule, activeLabel: target.wireLabel, percent: percent, plugged: !onBattery,
-                                 taskActive: st.task.active, now: Date())
+                                 tempC: status?.tempC ?? info?.tempC, taskActive: st.task.active, now: Date())
+    }
+
+    /// Runs a baldente:// action. Every one is logged under Top Up, Travel mode and tasks.
+    func run(_ action: AutomationAction) {
+        announce(.automation(action.title))
+        switch action {
+        case .topUp(let on): if topUp != on { toggleTopUp() }
+        case .travel(let on): travelUntil = on ? Date().addingTimeInterval(86400) : nil
+        case .discharge(let t): cmd("discharge \(t)")
+        case .calibrate: cmd("calibrate")
+        case .lowPower(let on): cmd("lowpower \(on ? "on" : "off")")
+        case .automatic: config.overrideZone = nil
+        case .cancelTask: cmd("cancel")
+        }
+    }
+
+    /// Auto Discharge: when the limit sits below the battery with the charger in, drain to it (at most once every five minutes).
+    private func maybeAutoDischarge(_ t: Target) {
+        guard config.autoDischarge == true, let st = status?.state,
+              lastAutoDischarge.map({ Date().timeIntervalSince($0) > 300 }) ?? true,
+              let goal = AutoDischarge.target(enabled: true, plugged: !onBattery, percent: percent, limitUpper: t.upper,
+                                              limitEnabled: t.upper < 100, taskActive: st.task.active,
+                                              overrideActive: travelUntil != nil || topUp, readyBy: st.chargeSchedule, now: Date()) else { return }
+        lastAutoDischarge = Date()
+        cmd("discharge \(goal)")
     }
 
     var headline: String {
