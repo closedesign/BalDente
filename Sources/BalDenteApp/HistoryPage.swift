@@ -21,7 +21,8 @@ struct HistoryPage: View {
                 }
             } else {
                 summary
-                chart("Battery health", "heart.fill", .red, \.health, unit: "%", zero: false)
+                chart("Battery health", "heart.fill", .red, \.health, unit: "%", zero: false, marks: model.calibrationDates)
+                if !model.calibrationDates.isEmpty { calibrations }
                 chart("Cycle count", "arrow.triangle.2.circlepath", .blue, \.cycles, unit: "", zero: false)
             }
             }
@@ -85,10 +86,37 @@ struct HistoryPage: View {
     private var summary: some View {
         let m = HealthHistory.summary(points)
         return HStack(spacing: 12) {
-            tile("Health now", m.healthNow.map { "\($0)%" } ?? "–", "heart.fill")
+            tile("Health now", (model.info?.healthPercent ?? m.healthNow).map { "\($0)%" } ?? "–", "heart.fill")
             tile("Change", m.healthDelta.map { String(format: "%+d%% in %d days", $0, m.healthDays ?? 1) } ?? "–", "chart.line.downtrend.xyaxis")
             tile("To \(HealthHistory.projectionTarget)% health", m.daysToTarget.map(Self.projection) ?? "–", "calendar.badge.clock")
             tile("Cycles added", m.cyclesAdded.map { "+\($0)" } ?? "–", "arrow.triangle.2.circlepath")
+        }
+    }
+
+    /// Each completed calibration with the health reading from the day before and the day after, so you can see whether it changed.
+    private var calibrations: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Label("Calibrations", systemImage: "gauge.with.dots.needle.50percent").font(.system(size: 16, weight: .bold, design: .rounded))
+            ForEach(CalibrationHistory.entries(dates: model.calibrationDates, points: points).prefix(6), id: \.date) { e in
+                HStack {
+                    Text(e.date.formatted(date: .abbreviated, time: .omitted)).font(.callout)
+                    Spacer()
+                    Text(Self.healthChange(e)).font(.callout.monospacedDigit()).foregroundStyle(.secondary)
+                }
+            }
+            Text("Dashed lines on the health chart mark them. Health is measured by the battery itself, so a calibration mostly fixes the percentage, not the capacity.")
+                .font(.caption).foregroundStyle(.secondary)
+        }
+        .padding(18).frame(maxWidth: .infinity, alignment: .leading)
+        .glassEffect(.regular.tint(.purple.opacity(0.1)), in: .rect(cornerRadius: 26))
+    }
+
+    private static func healthChange(_ e: CalibrationEntry) -> String {
+        switch (e.before, e.after) {
+        case (let b?, let a?): return "Health \(b)% → \(a)%"
+        case (let b?, nil): return "Health \(b)% before, next reading tomorrow"
+        case (nil, let a?): return "Health \(a)% after"
+        default: return "No health reading yet"
         }
     }
 
@@ -111,13 +139,16 @@ struct HistoryPage: View {
         return (lo - pad)...(hi + pad)
     }
 
-    private func chart(_ title: String, _ icon: String, _ tint: Color, _ value: KeyPath<HistoryPoint, Int?>, unit: String, zero: Bool) -> some View {
+    private func chart(_ title: String, _ icon: String, _ tint: Color, _ value: KeyPath<HistoryPoint, Int?>, unit: String, zero: Bool, marks: [Date] = []) -> some View {
         let data = points.compactMap { p in p[keyPath: value].map { (p.date, $0) } }
         return VStack(alignment: .leading, spacing: 8) {
             Label(title, systemImage: icon).font(.system(size: 16, weight: .bold, design: .rounded))
             Chart(data, id: \.0) { d in
                 LineMark(x: .value("Date", d.0), y: .value(title, d.1)).foregroundStyle(tint).interpolationMethod(.monotone)
                 AreaMark(x: .value("Date", d.0), y: .value(title, d.1)).foregroundStyle(tint.opacity(0.15)).interpolationMethod(.monotone)
+                ForEach(marks.filter { m in data.first.map { m >= $0.0 } ?? false }, id: \.self) { m in
+                    RuleMark(x: .value("Calibrated", m)).foregroundStyle(.purple.opacity(0.7)).lineStyle(StrokeStyle(lineWidth: 1, dash: [4, 3]))
+                }
             }
             .chartYScale(domain: domain(data.map(\.1)))
             .frame(height: 170)

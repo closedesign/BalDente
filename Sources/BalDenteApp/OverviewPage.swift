@@ -12,6 +12,7 @@ struct OverviewPage: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 30) {
             hero
+            if let p = model.readyPreview { leavingCard(p) }
             if let h = model.holdHintText { holdHint(h) }
             if let sug = model.habitSuggestion { habitCard(sug) }
             if let ns = model.networkSuggestion { NetworkSuggestionView(model: model, suggestion: ns, compact: false) }
@@ -103,6 +104,23 @@ struct OverviewPage: View {
         .padding(.leading, 18).padding(.trailing, 10).padding(.vertical, 10)
         .glassEffect(.regular.tint(model.accent.opacity(0.18)), in: .rect(cornerRadius: 22))
         .settingAnchor("Holding hint")
+    }
+
+    /// What the next scheduled departure will do, so a blocked or unpowered Ready by shows before it fails.
+    private func leavingCard(_ p: ReadyPreview) -> some View {
+        HStack(spacing: 12) {
+            Image(systemName: p.needsAttention ? "exclamationmark.triangle.fill" : "alarm.fill")
+                .foregroundStyle(p.needsAttention ? .orange : model.accent)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(p.title).font(.system(.headline, design: .rounded))
+                Text(p.detail).font(.callout).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+            }
+            Spacer(minLength: 8)
+            Button { model.openReadyBy() } label: { pill("Edit", "pencil") }.buttonStyle(.glass).disabled(model.calendar.enabled)
+        }
+        .padding(.leading, 18).padding(.trailing, 10).padding(.vertical, 10)
+        .glassEffect(.regular.tint((p.needsAttention ? Color.orange : model.accent).opacity(0.18)), in: .rect(cornerRadius: 22))
+        .settingAnchor("Leaving soon")
     }
 
     private func habitCard(_ sug: HabitSuggestion) -> some View {
@@ -225,10 +243,12 @@ struct OverviewPage: View {
     }
 
     private var calibrationSubtitle: String {
-        if let t = task, t.kind == "calibrate" { return "Running now" }
+        if let t = task, let p = CalibrationProgress.text(t, percent: model.percent) {
+            return t.phase != "discharge" && model.onBattery ? "Unplugged: plug in to continue" : p
+        }
         if let at = s?.calibrateAt { return "Scheduled \(at.formatted(date: .abbreviated, time: .shortened))" }
         if let sc = s?.schedule, sc.enabled { return "Repeats monthly on day \(sc.days.map(String.init).joined(separator: ", "))" }
-        return "Not scheduled"
+        return CalibrationProgress.lastText(model.lastCalibration) ?? "Not scheduled"
     }
 
     // MARK: Zones

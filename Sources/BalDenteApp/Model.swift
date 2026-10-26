@@ -52,7 +52,16 @@ final class Model: NSObject, ObservableObject, CLLocationManagerDelegate, UNUser
     private var lastLabel: String?
     private var lastZoneID: UUID?
     private var lastHeatHold = false
+    private var lastSkipKey: String?
     private var lastTask: TaskState?
+    /// When a calibration last ran its full course (not cancelled). Nil until one finishes with this version.
+    @Published private(set) var calibrationDates: [Date] = {
+        let d = UserDefaults.standard
+        let saved = d.array(forKey: "calibrationDates") as? [Date] ?? []
+        if saved.isEmpty, let old = d.object(forKey: "lastCalibration") as? Date { return [old] }
+        return saved
+    }()
+    var lastCalibration: Date? { calibrationDates.max() }
     private var switchNotice: Task<Void, Never>?
 
     // MARK: Keeping the user informed (tutorial, defaults, habits, change log)
@@ -72,6 +81,42 @@ final class Model: NSObject, ObservableObject, CLLocationManagerDelegate, UNUser
         didSet { UserDefaults.standard.set(try? JSONEncoder().encode(holdHint), forKey: "holdHint") }
     }
     /// Learn unplug times and suggest a Ready by plan. Suggestions only: nothing is applied without Accept.
+    // MARK: Updates (one request a day at most, only when the user leaves it on; never installs anything)
+    @Published var autoUpdateCheck = UserDefaults.standard.object(forKey: "autoUpdateCheck") as? Bool ?? true {
+        didSet { UserDefaults.standard.set(autoUpdateCheck, forKey: "autoUpdateCheck"); if autoUpdateCheck { checkForUpdates(manual: false) } }
+    }
+    @Published private(set) var updateStatus = ""
+    @Published private(set) var availableUpdate: UpdateCheck.Release?
+    @Published private(set) var checkingUpdates = false
+
+    func checkForUpdates(manual: Bool) {
+        let d = UserDefaults.standard
+        guard !checkingUpdates else { return }
+        if !manual { guard autoUpdateCheck, UpdateCheck.due(lastCheck: d.object(forKey: "lastUpdateCheck") as? Date) else { return } }
+        let current = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "dev"
+        checkingUpdates = true
+        if manual { updateStatus = "Checking…" }
+        var req = URLRequest(url: UpdateCheck.releasesURL, timeoutInterval: 15)
+        req.setValue("application/vnd.github+json", forHTTPHeaderField: "Accept")
+        URLSession.shared.dataTask(with: req) { [weak self] data, resp, _ in
+            let ok = (resp as? HTTPURLResponse)?.statusCode == 200
+            let latest = ok ? data.flatMap(UpdateCheck.latest(from:)) : nil
+            Task { @MainActor in
+                guard let self else { return }
+                self.checkingUpdates = false
+                guard let latest else { if manual { self.updateStatus = "Couldn't check. Try again later." }; return }
+                UserDefaults.standard.set(Date(), forKey: "lastUpdateCheck")
+                if UpdateCheck.isNewer(latest, than: current) {
+                    self.availableUpdate = latest
+                    self.updateStatus = "Version \(latest.version) is available."
+                } else {
+                    self.availableUpdate = nil
+                    self.updateStatus = "You're up to date (\(current))."
+                }
+            }
+        }.resume()
+    }
+
     @Published var habitsEnabled = UserDefaults.standard.object(forKey: "habitSuggestions") as? Bool ?? true {
         didSet { UserDefaults.standard.set(habitsEnabled, forKey: "habitSuggestions"); evaluateHabits(); evaluateNetworkHint() }
     }
@@ -124,6 +169,7 @@ final class Model: NSObject, ObservableObject, CLLocationManagerDelegate, UNUser
             Task { @MainActor in self?.refreshStatus() }
         }
         timer?.tolerance = 5      // lets macOS batch our wakeups with others
+        checkForUpdates(manual: false)
         syncRegions()
         scheduleNetworkRefresh()
         refreshStatus()
@@ -401,6 +447,12 @@ final class Model: NSObject, ObservableObject, CLLocationManagerDelegate, UNUser
             announce(.heat(on: h, limit: status?.state.heatLimit ?? HeatLimit.defaultLimit))
             lastHeatHold = h
         }
+        // A zone-limited Ready by silently skips when another limit is active. Say so once per departure (checked on the 20 s refresh).
+        if let st = status?.state, let skip = ReadySkip.check(st.chargeSchedule, activeLabel: target.wireLabel, percent: percent,
+                                                              taskActive: st.task.active, now: Date()), skip.key != lastSkipKey {
+            lastSkipKey = skip.key
+            announce(.readyBySkipped(zone: skip.zone, active: target.label, percent: skip.percent, by: skip.ready))
+        }
         if let now = status?.state.task {
             if let was = lastTask, was.kind != now.kind { announceTask(from: was, to: now) }
             lastTask = now
@@ -409,6 +461,7 @@ final class Model: NSObject, ObservableObject, CLLocationManagerDelegate, UNUser
         let day = dayString(Date())
         guard UserDefaults.standard.string(forKey: "lastLogDay") != day else { return }
         UserDefaults.standard.set(day, forKey: "lastLogDay")
+        checkCalibrationReminder()
         evaluateHabits()      // once a day too, so a pattern that matured overnight gets suggested without new events
         let url = Self.historyURL
         try? FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
@@ -440,6 +493,14 @@ final class Model: NSObject, ObservableObject, CLLocationManagerDelegate, UNUser
     /// A task the helper runs started or ended: Ready by / calendar top-ups, discharge and calibration.
     private func announceTask(from was: TaskState, to now: TaskState) {
         if was.kind == "topup" { announce(.readyByFinished(calendar: calendar.enabled, backTo: target.label)) }
+        else if was.kind == "calibrate" {
+            let done = CalibrationProgress.finishedCleanly(was)
+            if done {
+                calibrationDates = Array((calibrationDates + [Date()]).suffix(50))
+                UserDefaults.standard.set(calibrationDates, forKey: "calibrationDates")
+            }
+            announce(.calibrationEnded(completed: done))
+        }
         else if was.active { announce(.task(started: false, kind: was.kind, target: was.target)) }
         if now.kind == "topup" { announce(.readyByStarted(percent: now.target, by: now.restUntil?.addingTimeInterval(-30 * 60), calendar: calendar.enabled)) }
         else if now.active { announce(.task(started: true, kind: now.kind, target: now.target)) }
@@ -460,6 +521,15 @@ final class Model: NSObject, ObservableObject, CLLocationManagerDelegate, UNUser
             offlineSince = nil
             if UserDefaults.standard.object(forKey: "offlineNoticeFor") as? Date == since { announce(.helperBack) }
         }
+    }
+
+    /// Daily, from the log: suggest a calibration after 90 days without one. Suggest only; it never starts one.
+    private func checkCalibrationReminder() {
+        let d = UserDefaults.standard
+        guard let baseline = d.object(forKey: "calibrationBaseline") as? Date else { d.set(Date(), forKey: "calibrationBaseline"); return }
+        guard CalibrationReminder.due(last: lastCalibration, baseline: baseline, lastReminded: d.object(forKey: "calibrationReminded") as? Date) else { return }
+        d.set(Date(), forKey: "calibrationReminded")
+        announce(.calibrationDue(days: lastCalibration.map { CalibrationReminder.days(since: $0) }))
     }
 
     /// Monthly: tell the user if battery health fell 2 points or more. Called from the once-a-day log.
@@ -803,6 +873,13 @@ final class Model: NSObject, ObservableObject, CLLocationManagerDelegate, UNUser
         if system.power.charging { return ("Charging", "bolt.fill") }
         if system.power.plugged { return ("Plugged in", "powerplug.fill") }
         return ("Not charging", "battery.75percent")
+    }
+
+    /// What the next Ready by departure within a day will do; nil when there is nothing to say.
+    var readyPreview: ReadyPreview? {
+        guard let st = status?.state else { return nil }
+        return ReadyPreview.make(st.chargeSchedule, activeLabel: target.wireLabel, percent: percent, plugged: !onBattery,
+                                 taskActive: st.task.active, now: Date())
     }
 
     var headline: String {

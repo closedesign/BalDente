@@ -11,6 +11,15 @@ public struct Schedule: Codable, Equatable {
     public var minute = 30
     public var lastRun: String?    // yyyy-MM-dd, so a run happens once per day
     public init() {}
+
+    public init(from d: Decoder) throws {
+        let c = try d.container(keyedBy: CodingKeys.self)
+        enabled = try c.decodeIfPresent(Bool.self, forKey: .enabled) ?? false
+        days = try c.decodeIfPresent([Int].self, forKey: .days) ?? [1]
+        hour = try c.decodeIfPresent(Int.self, forKey: .hour) ?? 21
+        minute = try c.decodeIfPresent(Int.self, forKey: .minute) ?? 30
+        lastRun = try c.decodeIfPresent(String.self, forKey: .lastRun)
+    }
 }
 
 /// The next time the clock shows hour:minute, today if it hasn't passed yet, otherwise tomorrow.

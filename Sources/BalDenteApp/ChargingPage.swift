@@ -46,12 +46,18 @@ struct ChargingPage: View {
             card("Calibration", "gauge.with.dots.needle.50percent", .purple) {
                 Text("Drain to 15%, charge to 100%, rest an hour. Keeps the percentage accurate. Leave it plugged in; the Mac stays awake while it runs.")
                     .font(.callout).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
-                if let at = s?.calibrateAt {
+                if let t = task, let progress = CalibrationProgress.text(t, percent: model.percent) {
+                    Label(progress, systemImage: "gauge.with.dots.needle.50percent")
+                        .font(.system(.subheadline, design: .rounded).weight(.semibold)).foregroundStyle(.purple)
+                    if t.phase != "discharge", model.onBattery {
+                        Label("Unplugged: plug the charger back in to continue.", systemImage: "bolt.slash.fill")
+                            .font(.caption.weight(.semibold)).foregroundStyle(.orange)
+                    }
+                } else if let at = s?.calibrateAt {
                     HStack {
                         Label("Scheduled \(at.formatted(date: .abbreviated, time: .shortened))", systemImage: "moon.stars.fill")
                             .font(.system(.subheadline, design: .rounded).weight(.semibold))
                         Spacer()
-                        Button("Cancel") { model.cmd("calibrate off") }.buttonStyle(.glass).controlSize(.small)
                     }
                 } else {
                     VStack(spacing: 10) {
@@ -71,12 +77,21 @@ struct ChargingPage: View {
                             .disabled(task != nil || status == nil)
                     }
                 }
+                if task == nil, let last = CalibrationProgress.lastText(model.lastCalibration) {
+                    Label(last, systemImage: "checkmark.circle").font(.caption).foregroundStyle(.secondary)
+                }
                 if let sc = s?.schedule, sc.enabled {
                     Label("Repeats on days \(sc.days.map(String.init).joined(separator: ", ")) at " + String(format: "%02d:%02d", sc.hour, sc.minute),
                           systemImage: "calendar").font(.caption)
                 }
                 HStack {
-                    Button { model.cmd("calibrate") } label: { pill("Start Now", "play.fill") }.buttonStyle(.glass).disabled(task != nil || status == nil)
+                    if task?.kind == "calibrate" {
+                        Button { model.cmd("cancel") } label: { pill("Cancel", "xmark") }.buttonStyle(.glass)
+                    } else if s?.calibrateAt != nil {
+                        Button { model.cmd("calibrate off") } label: { pill("Cancel", "xmark") }.buttonStyle(.glass)
+                    } else {
+                        Button { model.cmd("calibrate") } label: { pill("Start Now", "play.fill") }.buttonStyle(.glass).disabled(task != nil || status == nil)
+                    }
                     Button { sheet = .schedule } label: { pill("Repeat…", "calendar") }.buttonStyle(.glass).disabled(status == nil)
                 }
             }

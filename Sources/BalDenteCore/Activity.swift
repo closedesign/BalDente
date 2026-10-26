@@ -22,22 +22,26 @@ public enum ChangeEvent: Equatable {
     case limit(from: String, to: String, upper: Int, lower: Int, reason: String?)
     case readyByStarted(percent: Int, by: Date?, calendar: Bool)
     case readyByFinished(calendar: Bool, backTo: String)
+    /// A Ready by limited to one zone did not start because another limit is active.
+    case readyBySkipped(zone: String, active: String, percent: Int, by: Date)
     case heat(on: Bool, limit: Int)
     case habitSuggested(String)
     case networkSuggested(String)
     case habitAccepted(String)
     case task(started: Bool, kind: String, target: Int)
     case defaultsChosen(String)
+    case calibrationEnded(completed: Bool)
+    case calibrationDue(days: Int?)
     case helperOffline
     case helperBack
 
     public var category: NotifyCategory {
         switch self {
         case .limit(_, let to, _, _, _): ChangeEvent.manualLabels.contains(to) ? .manual : .zones
-        case .readyByStarted, .readyByFinished: .readyBy
+        case .readyByStarted, .readyByFinished, .readyBySkipped: .readyBy
         case .heat: .heat
         case .habitSuggested, .habitAccepted, .networkSuggested: .habits
-        case .task, .defaultsChosen: .manual
+        case .task, .defaultsChosen, .calibrationEnded, .calibrationDue: .manual
         case .helperOffline, .helperBack: .helper
         }
     }
@@ -57,6 +61,7 @@ public enum ChangeEvent: Equatable {
         case .readyByStarted(let p, _, let cal): return "\(cal ? "Calendar Ready by" : "Ready by"): charging to \(p)%"
         case .readyByFinished(let cal, let back): return "\(cal ? "Calendar Ready by" : "Ready by") finished"
             + (back.isEmpty ? "" : ", back to \(ChangeEvent.zoneName(back))")
+        case .readyBySkipped(_, _, _, let by): return "Ready by skipped for \(by.formatted(date: .omitted, time: .shortened))"
         case .heat(let on, _): return on ? "Heat protection on" : "Cooled down"
         case .habitSuggested: return "A charge plan for your routine"
         case .networkSuggested: return "A Wi-Fi network you use often"
@@ -69,6 +74,8 @@ public enum ChangeEvent: Equatable {
             case ("calibrate", false): return "Calibration finished"
             default: return started ? "Task started" : "Task finished"
             }
+        case .calibrationDue: return "Time to calibrate?"
+        case .calibrationEnded(let done): return done ? "Calibration complete" : "Calibration cancelled"
         case .defaultsChosen(let name): return "Limits set: \(name)"
         case .helperOffline: return "BalDente's helper isn't answering"
         case .helperBack: return "Helper is back"
@@ -88,6 +95,8 @@ public enum ChangeEvent: Equatable {
         case .readyByStarted(let p, let by, _):
             let when = by.map { " by \($0.formatted(date: .omitted, time: .shortened))" } ?? ""
             return "Zone limits are paused so the battery reaches \(p)%\(when). They return 30 minutes after that, or when you unplug."
+        case .readyBySkipped(let zone, let active, let p, _):
+            return "It is set for \(ChangeEvent.zoneName(zone)) only, but \(ChangeEvent.zoneName(active)) is active, so the top-up to \(p)% didn't start. Choose Anywhere in Ready by to run it wherever you are."
         case .readyByFinished: return "The scheduled top-up ended and your normal limit applies again."
         case .heat(let on, let limit):
             return on ? "The battery reached \(limit) °C, so charging is paused until it cools 3 degrees." : "Normal charging can continue."
@@ -96,6 +105,11 @@ public enum ChangeEvent: Equatable {
         case .task(let started, let kind, _):
             if started { return kind == "discharge" ? "The charger stays off until then." : "Drain to 15%, charge to 100%, rest an hour. Keep it plugged in." }
             return "Your normal limit applies again."
+        case .calibrationDue(let days):
+            let ago = days.map { "It has been \($0) days since your last calibration." } ?? "BalDente hasn't recorded a calibration yet."
+            return ago + " It keeps the percentage accurate. Start one on the Charging Tools page; keep the charger plugged in."
+        case .calibrationEnded(let done):
+            return done ? "Your battery percentage should be more accurate now. Your normal limit applies again." : "Your normal limit applies again."
         case .defaultsChosen: return "You can change any zone's limits on the Zones page."
         case .helperOffline: return "Charging limits aren't being applied. Open BalDente > General to reinstall it."
         case .helperBack: return "Charging limits are being applied again."

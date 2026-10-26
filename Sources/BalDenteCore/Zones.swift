@@ -26,6 +26,18 @@ public struct Zone: Codable, Identifiable, Equatable {
         self.name = name; self.networks = networks; self.upper = upper; self.lower = lower; self.icon = icon; self.place = place
     }
 
+    // Tolerant: a field added in a later version must never make an older saved zone unreadable.
+    public init(from d: Decoder) throws {
+        let c = try d.container(keyedBy: CodingKeys.self)
+        id = try c.decodeIfPresent(UUID.self, forKey: .id) ?? UUID()
+        name = try c.decodeIfPresent(String.self, forKey: .name) ?? "Zone"
+        networks = try c.decodeIfPresent([String].self, forKey: .networks) ?? []
+        upper = try c.decodeIfPresent(Int.self, forKey: .upper) ?? 80
+        lower = try c.decodeIfPresent(Int.self, forKey: .lower) ?? 75
+        icon = try c.decodeIfPresent(String.self, forKey: .icon)
+        place = try c.decodeIfPresent(Place.self, forKey: .place)
+    }
+
     /// Labels the app uses for non-zone targets (lowercased). A zone with one of these names would be mistaken for them.
     public static let reserved: Set<String> = ["default", "top up", "travel mode", "manual"]
 }
@@ -37,6 +49,15 @@ public struct Appearance: Codable, Equatable {
     public var animated = true
     public var compact = false
     public init() {}
+
+    public init(from d: Decoder) throws {
+        let c = try d.container(keyedBy: CodingKeys.self)
+        mode = try c.decodeIfPresent(String.self, forKey: .mode) ?? mode
+        preset = try c.decodeIfPresent(String.self, forKey: .preset) ?? preset
+        custom = try c.decodeIfPresent([String].self, forKey: .custom) ?? custom
+        animated = try c.decodeIfPresent(Bool.self, forKey: .animated) ?? animated
+        compact = try c.decodeIfPresent(Bool.self, forKey: .compact) ?? compact
+    }
 }
 
 public struct Config: Codable, Equatable {
@@ -50,9 +71,20 @@ public struct Config: Codable, Equatable {
     public init() {
         zones = [
             Zone(name: "Home", upper: 50, lower: 45),
-            Zone(name: "School", upper: 100, lower: 95),
-            Zone(name: "Travel", upper: 90, lower: 85),
+            Zone(name: "School", upper: 80, lower: 75),
+            Zone(name: "Travel", upper: 100, lower: 95),
         ]
+    }
+
+    // Tolerant: keep every saved value, default only what an older file lacks.
+    public init(from d: Decoder) throws {
+        self.init()
+        let c = try d.container(keyedBy: CodingKeys.self)
+        zones = try c.decodeIfPresent([Zone].self, forKey: .zones) ?? zones
+        defaultUpper = try c.decodeIfPresent(Int.self, forKey: .defaultUpper) ?? defaultUpper
+        defaultLower = try c.decodeIfPresent(Int.self, forKey: .defaultLower) ?? defaultLower
+        overrideZone = try c.decodeIfPresent(String.self, forKey: .overrideZone)
+        appearance = try c.decodeIfPresent(Appearance.self, forKey: .appearance)
     }
 
     /// Makes imported or hand-edited limits something the helper accepts (it rejects upper outside 5...100 or lower >= upper),
@@ -80,7 +112,12 @@ public struct Config: Codable, Equatable {
     }
 
     public static func load() -> Config {
-        (try? Data(contentsOf: url)).flatMap { try? JSONDecoder().decode(Config.self, from: $0) } ?? Config()
+        guard let data = try? Data(contentsOf: url) else { return Config() }
+        if let c = try? JSONDecoder().decode(Config.self, from: data) { return c }
+        // Unreadable: keep a copy so the next save can't destroy the only record of the user's settings.
+        let backup = url.deletingLastPathComponent().appendingPathComponent("config.unreadable.json")
+        if !FileManager.default.fileExists(atPath: backup.path) { try? data.write(to: backup) }
+        return Config()
     }
 
     public func save() {

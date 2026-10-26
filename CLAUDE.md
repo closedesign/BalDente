@@ -60,7 +60,7 @@ There's no Xcode project — everything goes through `swift build`/`swift test` 
   "Zones" if it touches zones), plus `CHANGELOG.md`. The README is the public sales page (github.com/closedesign/BalDente); keep claims true to the code.
 - Keep the **Zones** section highlighted: zone switching by Wi-Fi or saved place is the headline feature, and it is free here whereas other
   battery limiters usually charge for it. Don't make claims about specific competitors' features that can't be verified.
-- Defaults to state accurately: a fresh install ships zones **Home 50%/45%**, School 100%/95%, Travel 90%/85%, and "Everywhere else" 80%/75%
+- Defaults to state accurately: a fresh install ships zones **Home 50%/45%**, School 80%/75%, Travel 100%/95%, and "Everywhere else" 80%/75%
   (`Config.init` in `BalDenteCore/Zones.swift`). **Out of the box charging is limited to 50% at home**; the Home zone applies once the user adds
   their home Wi-Fi. Heat Protection defaults to 35 °C (range 30–60, `BalDenteCore/HeatLimit.swift`).
 - Donate buttons (Ko-fi, Buy Me a Coffee: `SupportLinks` in `ConfigPages.swift`) appear on About, Overview and the compact layout, and in the README and

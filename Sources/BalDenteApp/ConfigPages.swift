@@ -135,6 +135,17 @@ struct GeneralPage: View {
                     Button("Clear") { model.clearHabits() }.buttonStyle(.glass)
                 }
             }
+            SettingsGroup("Updates") {
+                SettingRow("arrow.down.circle.fill", .green, "Check for updates automatically", "Looks for a new BalDente release on GitHub about once a day. It only tells you; your settings are never touched.") {
+                    Toggle("", isOn: Binding(get: { model.autoUpdateCheck }, set: { model.autoUpdateCheck = $0 })).labelsHidden().toggleStyle(.switch)
+                }
+                SettingRow("arrow.triangle.2.circlepath", .blue, "Check for updates now", model.updateStatus.isEmpty ? "See whether a newer version is out." : model.updateStatus) {
+                    HStack {
+                        if let u = model.availableUpdate { Link("Download \(u.version)", destination: u.page) }
+                        Button("Check now") { model.checkForUpdates(manual: true) }.buttonStyle(.glass).disabled(model.checkingUpdates)
+                    }
+                }
+            }
             SettingsGroup("Help") {
                 SettingRow("graduationcap.fill", .blue, "Show tutorial again", "The short tour of limits, zones, Ready by, heat protection and the menu bar icon.") {
                     Button("Show") { model.showTutorial = true }.buttonStyle(.glass)
@@ -182,6 +193,21 @@ struct AboutPage: View {
             Text("BalDente is free and will stay free, with no paid tier. If it saved your battery, a coffee helps keep it updated and working on more Macs.")
                 .fixedSize(horizontal: false, vertical: true)
             DonateButtons().padding(.top, 4)
+        }
+        SettingsGroup("What's New") {
+            let entries = WhatsNew.allEntries(in: (Bundle.main.url(forResource: "CHANGELOG", withExtension: "md")
+                .flatMap { try? String(contentsOf: $0, encoding: .utf8) }) ?? "")
+            if entries.isEmpty {
+                Text("The change history isn't available in this build. See the Releases page on GitHub.")
+                    .foregroundStyle(.secondary)
+            }
+            ForEach(entries) { e in
+                DisclosureGroup(e.heading) {
+                    VStack(alignment: .leading, spacing: 6) {
+                        ForEach(e.items, id: \.self) { Text("• " + $0).fixedSize(horizontal: false, vertical: true) }
+                    }.frame(maxWidth: .infinity, alignment: .leading).padding(.vertical, 4)
+                }
+            }
         }
         SettingsGroup("About BalDente") {
             Text("BalDente \(appVersionText)").font(.headline)

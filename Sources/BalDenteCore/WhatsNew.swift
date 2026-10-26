@@ -21,6 +21,36 @@ public enum WhatsNew {
         return out.isEmpty ? nil : out
     }
 
+    public struct Entry: Equatable, Identifiable {
+        public var version: String
+        public var heading: String
+        public var items: [String]
+        public var id: String { version }
+    }
+
+    /// Every `## <version>` section with bullets, newest first, for the About page. Non-version headings ("Road to 1.0") are skipped.
+    public static func allEntries(in changelog: String) -> [Entry] {
+        var out: [Entry] = []
+        var cur: Entry?
+        func flush() { if let c = cur, !c.items.isEmpty { out.append(c) }; cur = nil }
+        for raw in changelog.split(omittingEmptySubsequences: false, whereSeparator: \.isNewline) {
+            let line = raw.trimmingCharacters(in: .whitespaces)
+            if line.hasPrefix("## ") {
+                flush()
+                let heading = String(line.dropFirst(3))
+                let head = heading.split(separator: " ").first.map(String.init) ?? ""
+                let v = head.hasPrefix("v") ? String(head.dropFirst()) : head
+                if isRelease(v) { cur = Entry(version: v, heading: heading, items: []) }
+                continue
+            }
+            guard cur != nil, !line.isEmpty else { continue }
+            if line.hasPrefix("- ") || line.hasPrefix("* ") { cur!.items.append(String(line.dropFirst(2))) }
+            else if !cur!.items.isEmpty { cur!.items[cur!.items.count - 1] += " " + line }
+        }
+        flush()
+        return out.sorted { compare($0.version, $1.version) == .orderedDescending }
+    }
+
     /// Whether to show the sheet for `current`. Never on a first install (the tutorial covers that) or for dev builds,
     /// and only when the version moved forward since the last one shown.
     public static func shouldShow(current: String, lastSeen: String?, firstLaunch: Bool) -> Bool {
@@ -29,7 +59,7 @@ public enum WhatsNew {
         return compare(current, last) == .orderedDescending
     }
 
-    static func isRelease(_ v: String) -> Bool { !v.isEmpty && v.allSatisfy { $0.isNumber || $0 == "." } }
+    public static func isRelease(_ v: String) -> Bool { !v.isEmpty && v.allSatisfy { $0.isNumber || $0 == "." } }
 
     /// Numeric, dot-separated comparison: 0.10 is newer than 0.9.
     public static func compare(_ a: String, _ b: String) -> ComparisonResult {

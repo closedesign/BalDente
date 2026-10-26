@@ -57,7 +57,7 @@ A **zone** is a charge limit that switches on by itself, based on where you are:
 - **Each zone has its own limit and resume level**, a name, an icon and its own background color.
 - **Out of the box BalDente limits charging to 50% at home** (it resumes at 45%), so a Mac that lives on its charger
   stops wearing the battery. Add your home Wi-Fi to the **Home** zone and it happens automatically. The other starter zones are
-  **School** (100%), **Travel** (90%), and **Everywhere else** (80%) for anywhere that matches no zone.
+  **School** (80%), **Travel** (100%), and **Everywhere else** (80%) for anywhere that matches no zone.
 - **The first-run tour shows these defaults up front** and offers a simpler **80% everywhere** instead. While charging is held
   below 100%, Overview and the menu bar panel say why ("Holding at 50% (Home zone)") with one-click Top Up and Ready by.
 - **Every zone switch is announced** with its reason (for example "connected to HomeNet" or "you pinned it").
@@ -88,7 +88,9 @@ four dots at the bottom are the volume.
 - **Top Up to 100%** for a trip, then back to your zone's limit.
 - **Travel mode:** hold 100% for 24 hours, then return to normal.
 - **Ready by:** per-day schedule (days, leave time, target charge, optionally only in one zone). Charging is timed to
-  finish just as you leave, and the Mac wakes itself to start when needed.
+  finish just as you leave, and the Mac wakes itself to start when needed. If a zone-limited schedule can't start because another
+  limit is active, you get a notification instead of finding out at the door. Within a day of leaving, Overview shows when charging
+  will start, or why it won't (wrong zone, not plugged in).
 - **Calendar Ready by:** reads your next timed event (Calendar access, event start time only) and gets you full a set time before.
 - **Habit suggestions:** learns when you usually unplug, per weekday, and suggests a Ready by plan ("You usually unplug around 8:10
   on weekdays. Charge to 100% by 8:00?"). It only suggests: nothing changes until you tap Accept. The last 8 weeks of unplug times
@@ -98,7 +100,7 @@ four dots at the bottom are the volume.
 - **Heat Protection:** pauses charging when the battery gets hot. Limit from 30 to 60 °C, default 35 °C, set with a thermometer
   you can drag, click, or type into (↑ ↓ ← →, ⇧ for 5), with presets.
 - **Discharge** to a chosen level with the charger plugged in.
-- **Calibration:** drain to 15%, charge to 100%, rest an hour. Run now, at a chosen time tonight, or repeat on days of the month.
+- **Calibration:** drain to 15%, charge to 100%, rest an hour. Run now, at a chosen time tonight, or repeat on days of the month. Shows live progress while it runs, notifies you when it finishes and remembers the last completed date, nudges you after 90 days without one and marks each on the History chart.
 - **Low Power Mode** switch.
 
 **Menu bar and Dock icon**
@@ -134,6 +136,10 @@ four dots at the bottom are the volume.
 - Launch at login, status refresh interval, smart notifications (battery health drops),
   export and import all your settings, reset icon and panel settings.
 - Command line tool: `baldente status | limit <upper> <lower> | enable | disable`.
+
+**Updates**
+- **Check for updates** button in General plus an optional daily automatic check (one request to GitHub; it only tells you, never installs).
+  Updating keeps your zones, limits, Ready by and appearance. **What's New** under About lists the changes in every version.
 
 **Free, open source, and private**
 - MIT licensed, no account, no tracking, no network access from the helper. Optional donations in the app (About, Overview) and below.

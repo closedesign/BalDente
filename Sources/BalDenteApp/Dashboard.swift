@@ -239,11 +239,15 @@ struct ReadyBySheet: View {
                             get: { isOn }, set: { if $0 { on.insert(d) } else { on.remove(d) } }))
                             .toggleStyle(.switch)
                         Spacer()
-                        DatePicker("", selection: time(d), displayedComponents: .hourAndMinute).labelsHidden()
-                        Picker("", selection: percent(d)) { ForEach(levels, id: \.self) { Text("\($0)%").tag($0) } }
-                            .labelsHidden().frame(width: 78)
+                        // Only the time and level are disabled for an off day: disabling the whole row also froze its switch,
+                        // so a day could be turned off but never back on.
+                        Group {
+                            DatePicker("", selection: time(d), displayedComponents: .hourAndMinute).labelsHidden()
+                            Picker("", selection: percent(d)) { ForEach(levels, id: \.self) { Text("\($0)%").tag($0) } }
+                                .labelsHidden().frame(width: 78)
+                        }
+                        .disabled(!isOn).opacity(isOn ? 1 : 0.4)
                     }
-                    .disabled(!isOn).opacity(isOn ? 1 : 0.4)
                     .padding(.horizontal, 14).padding(.vertical, 6)
                     .glassEffect(.regular.tint(isOn ? .orange.opacity(0.18) : nil), in: .rect(cornerRadius: 18))
                     .opacity(1)
@@ -257,6 +261,10 @@ struct ReadyBySheet: View {
             Picker("Only when in zone", selection: $zone) {
                 Text("Anywhere").tag("")
                 ForEach(model.config.zones) { Text($0.name).tag($0.name) }
+            }
+            if !zone.isEmpty {
+                Label("Won't run when you're outside \(zone), or under Travel Mode or Top Up. It only starts while \(zone) is the active zone. Choose Anywhere to run it wherever you are.", systemImage: "exclamationmark.triangle.fill")
+                    .font(.caption).foregroundStyle(.orange).fixedSize(horizontal: false, vertical: true)
             }
             Text("Ready by overrides your zone limits from when charging starts until 30 minutes after you leave. BalDente wakes the Mac when it needs to start, even with the lid closed. Keep the charger plugged in; a fully shut-down Mac can't be woken.")
                 .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
