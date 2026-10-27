@@ -4,6 +4,16 @@
 BalDente stays on 0.x until: it is notarized, it has been tested on at least three Mac models and two macOS versions, it has had a week of daily use
 without a charging bug, and the helper installs, updates and uninstalls cleanly on a fresh account.
 
+## 0.23 (pre-release)
+- **Shortcuts compatibility:** new `baldente://zone/<name>` link pins an existing zone (a link can't create one), so a Shortcut or Focus automation can switch to Travel or Home. General's Automation links row gets a **Copy command path** button for Run Shell Script (Shortcuts has no `PATH`), and the README has a Shortcuts section with examples. Native App Intents still need Xcode's metadata step.
+- **Battery Display page** is now four cards (Battery Display, Charging Effect, Text Beside the Icon, Ring Colors) that flow into two or three columns in wide windows.
+
+## 0.22 (pre-release)
+- **Docs and in-app search brought up to date:** the README now covers the command line `get` command, every `baldente://` link, the quick menu, diagnostics, Save energy on battery and the macOS Charge Limit read.
+- **Search finds more:** Travel time, Cooling down, Leaving soon, Save energy on battery, Catch up, Zone suggestions, Charge normally for a while, Copy diagnostics and Automation links.
+- **Automation links** row in General (Settings file and support) lists the `baldente://` links and `baldente get` values, with a Copy list button.
+- Charging and General page subtitles now mention everything on those pages.
+
 ## 0.21 (pre-release)
 - **macOS Charge Limit is now automatic:** BalDente reads the limit you set in System Settings > Battery (via `pmset -g battlimit`) at launch, when you switch back to the app and after wake, so zones at that level are handed to macOS without any setup. The Charging page picker defaults to "Automatic (follow macOS)"; "Not using" or a fixed step still work, and a step you picked by hand before is kept.
 

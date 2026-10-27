@@ -3,6 +3,10 @@
 License: MIT. Reference projects (read for ideas and SMC key behavior; check each license before copying code):
 actuallymentor/battery (MIT), charlie0129/batt (GPL-2.0), mhaeuser/Battery-Toolkit (GPL). BattOpt is closed source; do not use it.
 
+## Working rule: docs stay in sync
+Every change updates, in the same commit: README, CHANGELOG + VERSION, the in-app search index (`Pages.swift`), tutorial/tour/What's New,
+Advisor tips, SECURITY/CONTRIBUTING when relevant, this file and CLAUDE.md. Details in CLAUDE.md "Keep every doc in sync".
+
 ## Architecture
 - `CSMC` (C): AppleSMC read/write. Done, reads work as a normal user.
 - `BalDenteCore` (Swift): config, zones, limiter policy, Wi-Fi detection, battery info.

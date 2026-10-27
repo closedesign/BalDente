@@ -115,6 +115,17 @@ struct GeneralPage: View {
                            "Copies versions, helper state and recent changes for a bug report. No Wi-Fi names or places are included.") {
                     Button("Copy") { model.copyDiagnostics() }.buttonStyle(.glass)
                 }
+                SettingRow("terminal", .indigo, "Automation links",
+                           "Shortcuts' Open URLs action or a script can run baldente://topup, travel/on, discharge/60, calibrate, lowpower/on, automatic, zone/Home (pin a zone) and cancel. In Run Shell Script, baldente get state|percent|limit|temperature|zone prints a value; Copy command path gives its full path.") {
+                    Button("Copy list") {
+                        NSPasteboard.general.clearContents()
+                        NSPasteboard.general.setString("baldente://topup\nbaldente://topup/off\nbaldente://travel/on\nbaldente://travel/off\nbaldente://discharge/60\nbaldente://calibrate\nbaldente://lowpower/on\nbaldente://lowpower/off\nbaldente://automatic\nbaldente://zone/Home\nbaldente://cancel", forType: .string)
+                    }.buttonStyle(.glass)
+                    Button("Copy command path") {
+                        NSPasteboard.general.clearContents()
+                        NSPasteboard.general.setString(Bundle.main.bundleURL.appendingPathComponent("Contents/Resources/baldente").path, forType: .string)
+                    }.buttonStyle(.glass)
+                }
                 if !model.settingsFileMessage.isEmpty {
                     Text(model.settingsFileMessage).font(.caption).foregroundStyle(.secondary).padding(.leading, 48)
                 }

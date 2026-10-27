@@ -48,7 +48,7 @@ enum SettingsPage: String, CaseIterable, Identifiable {
         switch self {
         case .overview: "Where your battery stands and what BalDente is doing about it."
         case .zones: "Charge limits that follow your Wi-Fi and saved places."
-        case .charging: "Ready by, heat protection, discharge, calibration and Low Power Mode."
+        case .charging: "Ready by, heat protection, macOS charge limit, discharge, calibration, sleep, schedule and Low Power Mode."
         case .history: "Battery health and cycle count over time."
         case .icon: "Where the live status icon lives and how big it is."
         case .battery: "How the battery ring, number and charging effect look."
@@ -57,7 +57,7 @@ enum SettingsPage: String, CaseIterable, Identifiable {
         case .audio: "Volume display and scrolling."
         case .panel: "What the menu bar popover shows, and its shortcut."
         case .appearance: "Colors, background animation and window layout."
-        case .general: "Startup, the background helper, permissions and resets."
+        case .general: "Startup, the background helper, permissions, notifications, settings backup and resets."
         case .about: "Version and credits."
         }
     }
@@ -107,6 +107,15 @@ enum SettingsIndex {
             i("Low Power Mode", "Ask macOS to reduce power use.", ["energy", "save power", "efficiency"], .charging),
             i("Stop charging when sleeping", "Cut the charger as the Mac sleeps so it can't charge past the limit.", ["sleep", "lid", "overnight", "close"], .charging),
             i("Stay awake until the limit", "Keep the Mac awake only while it charges toward the limit.", ["sleep", "lid closed", "clamshell", "disable sleep"], .charging),
+            i("Travel time", "Say when you must arrive and how long the trip takes; Ready by finishes charging when you leave.", ["commute", "arrive", "drive", "minutes", "leave time", "ready by"], .charging, anchor: "Ready by"),
+            i("Cooling down", "While Heat Protection holds the charger, the last 30 minutes of temperature and when charging should resume.", ["heat", "hot", "temperature", "trend", "paused", "resume"], .overview, anchor: "Cooling down"),
+            i("Leaving soon", "Within a day of a Ready by departure: when charging will start, or why it won't.", ["ready by", "preview", "departure", "wrong zone", "not plugged in"], .overview, anchor: "Leaving soon"),
+            i("Save energy on battery", "Turn Low Power Mode on automatically whenever the Mac runs on its battery.", ["low power", "energy", "unplugged", "automatic"], .charging, anchor: "Low Power Mode"),
+            i("Catch up if the Mac was asleep", "Run a missed scheduled task when the Mac wakes within a day.", ["schedule", "missed", "wake", "task"], .charging, anchor: "Schedule"),
+            i("Zone suggestions", "Offers to add a Wi-Fi network you join often to a zone. Only suggests; nothing changes until you tap.", ["wifi", "network", "new zone", "habit", "cafe", "suggest"], .general, anchor: "Habit suggestions"),
+            i("Charge normally for a while", "From the menu bar panel's clock button, lift the limit for 1, 2, 4 or 24 hours.", ["timer", "temporary", "pause limit", "full charge", "menu bar"], .panel, anchor: "Displayed Items"),
+            i("Copy diagnostics", "Copy a report of your Mac, helper and settings to paste into a bug report.", ["support", "bug", "report", "debug", "issue", "log"], .general),
+            i("Automation links", "baldente:// links and `baldente get` for Shortcuts, Run Shell Script and scripts.", ["shortcuts", "url", "script", "cli", "terminal", "command line", "siri", "pin zone", "path", "run shell script", "open urls"], .general),
             i("Calibrate overnight", "Once a month, calibrate when you plug in at night.", ["overnight", "night", "monthly", "automatic calibration"], .charging),
             i("Automatic Discharge", "Drain to the limit on its own when it drops below the battery.", ["auto discharge", "drain", "lower limit"], .charging),
             i("MagSafe LED", "Green at the limit, orange while charging.", ["light", "green", "orange", "led", "indicator"], .charging),

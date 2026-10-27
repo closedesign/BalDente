@@ -105,7 +105,7 @@ four dots at the bottom are the volume.
 - **MagSafe LED (experimental):** green at the limit, orange while charging, or pick your own colour for each state, on Macs that expose the LED.
 - **Gauge and Power flow:** the battery's own percentage next to macOS's, and watts from charger and battery to the Mac.
 - **Automation:** `baldente://` links for Shortcuts' "Open URLs" action and `baldente get state|percent|limit|temperature|zone` for
-  "Run Shell Script". No native Shortcuts actions yet.
+  "Run Shell Script" (full list and Shortcuts tips under [Automation](#automation)). General has Copy list and Copy command path buttons. No native Shortcuts actions yet.
 - **Calendar Ready by:** reads your next timed event (Calendar access, event start time only) and gets you full a set time before.
 - **Habit suggestions:** learns when you usually unplug, per weekday, and suggests a Ready by plan ("You usually unplug around 8:10
   on weekdays. Charge to 100% by 8:00?"). It only suggests: nothing changes until you tap Accept. The last 8 weeks of unplug times
@@ -116,7 +116,8 @@ four dots at the bottom are the volume.
   you can drag, click, or type into (↑ ↓ ← →, ⇧ for 5), with presets.
 - **Discharge** to a chosen level with the charger plugged in.
 - **Calibration:** drain to 15%, charge to 100%, rest an hour. Run now, at a chosen time tonight, or repeat on days of the month. Pause and resume it, turn on **Calibrate overnight** (once a month, when you plug in at night), and see how long the drain will take. Shows live progress and how long it has been running, stops by itself if it can't finish within 24 hours, never runs twice in one night, notifies you when it finishes and remembers the last completed date, nudges you after 90 days without one and marks each on the History chart.
-- **Low Power Mode** switch.
+- **Low Power Mode** switch, plus **Save energy on battery** to turn it on whenever the Mac runs from its battery.
+- **Install helper** button on every charging card while the helper isn't running, so greyed-out controls say why.
 
 **Menu bar and Dock icon**
 - One combined icon: battery ring, network glyph and volume dots, in the menu bar, the Dock, or both.
@@ -154,8 +155,10 @@ four dots at the bottom are the volume.
 - **Compact mode:** a dense standard Mac layout in a small window. The regular window resizes down to about 640 x 470.
 - **Search settings** with ⌘F: type a word and jump to (and highlight) the setting.
 - Launch at login, status refresh interval, smart notifications (battery health drops),
-  export and import all your settings, reset icon and panel settings.
-- Command line tool: `baldente status | limit <upper> <lower> | enable | disable`.
+  export and import all your settings, **Copy diagnostics** for bug reports (no Wi-Fi names or places), reset icon and panel settings.
+- The window remembers its size, position and last page; closing it keeps BalDente running in the menu bar.
+- Right-click the menu bar icon for a quick menu: Top Up and pin a zone.
+- Command line tool: `baldente status | get <value> | limit <upper> <lower> | enable | disable`.
 
 **Updates**
 - **Check for updates** button in General plus an optional daily automatic check (one request to GitHub; it only tells you, never installs).
@@ -193,6 +196,7 @@ Changing the charge limit needs root, so BalDente installs a small helper, `bald
 a local Unix socket, applies the limit through the Mac's SMC, and does nothing else: no network access, no analytics.
 
 - **Location** access is used only to read Wi-Fi names and saved places for zone switching.
+- **macOS Charge Limit** is read with `pmset -g battlimit` (no extra permission); BalDente never changes macOS's own setting.
 - **Calendar** access is used only for the start time of your next timed event when *Calendar Ready by* is on.
 - **Habit suggestions** record only unplug times and weekdays (and zone exits on battery) in `habits.json`, and Wi-Fi names that
   no zone has in `network-habits.json`, both on your Mac. Nothing is uploaded.
@@ -205,8 +209,35 @@ Battery charging is a hardware-adjacent feature. Read [SECURITY.md](SECURITY.md)
 ```bash
 baldente status            # battery %, adapter, limiter state
 baldente limit 80 75       # hold at 80%, resume at 75%
+baldente enable            # turn limiting back on
 baldente disable           # stop limiting
+baldente get percent       # one bare value: state, percent, limit, temperature or zone
 ```
+
+## Automation
+
+For Shortcuts ("Open URLs" action), scripts and `open` in Terminal. Every link run is logged in **Recent changes**.
+
+| Link | Does |
+|---|---|
+| `baldente://topup` / `topup/off` | Start or cancel Top Up to 100% |
+| `baldente://travel/on` / `travel/off` | Travel mode (hold 100% for 24 h) |
+| `baldente://discharge/60` | Discharge to a level (20 to 90%) |
+| `baldente://calibrate` | Start a calibration (ignored if one is running) |
+| `baldente://lowpower/on` / `lowpower/off` | Low Power Mode |
+| `baldente://automatic` | Un-pin a zone and let Wi-Fi and location decide |
+| `baldente://zone/Home` | Pin an existing zone by name (case-insensitive; spaces as `%20`). Links can't create zones |
+| `baldente://cancel` | Cancel the running task |
+
+### Using it with Shortcuts
+
+- **Run something:** add an **Open URLs** action with one of the links above (for example `baldente://zone/Travel`, or `baldente://topup`
+  from a "When I leave work" automation). Links only do reversible things and are range-checked.
+- **Read something:** add **Run Shell Script** and use the command's full path, because Shortcuts has no `PATH`:
+  `/Applications/BalDente.app/Contents/Resources/baldente get percent`. **General → Settings file and support → Copy command path**
+  copies it for you.
+- Ideas: pin Travel when a Focus turns on, Top Up before a calendar trip, notify when `get state` says `HeatProtect`.
+- There are no native Shortcuts actions yet: App Intents need Xcode's metadata step, which this Swift Package build doesn't run.
 
 ## Compatibility
 

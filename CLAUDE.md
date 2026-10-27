@@ -43,6 +43,12 @@ There's no Xcode project — everything goes through `swift build`/`swift test` 
 2. Add a matching `SettingsIndex` entry in `Pages.swift`; its title must equal the row title (or set `anchor:`).
 3. Ranking logic is `BalDenteCore/SettingsSearch.swift` and is unit-tested; keep UI-free logic in Core.
 
+## Keep every doc in sync (every change, no exceptions)
+For each user-visible change, update in the same commit: `README.md` (features, Automation, Zones, defaults), `CHANGELOG.md` + `VERSION`,
+`SettingsIndex` in `Pages.swift` (search entries/subtitles), the tutorial/tour/What's New text (`Tutorial.swift`, `GuidedTour.swift`),
+Battery Health Advisor tips if advice changed, `SECURITY.md`/`CONTRIBUTING.md` if the helper or workflow changed, `PLAN.md`, and this file. Then
+`swift build`, `swift test --scratch-path`, `./install.sh`, and commit with the version in the message.
+
 ## Announcing changes
 - Every limit change goes through `Model.announce(ChangeEvent)`: it always appends to Recent changes and notifies unless that category is muted.
   Add new wording to `ChangeEvent` (Core), not ad-hoc `notify` calls. Habit and zone suggestions only suggest; never apply a schedule or add a network without the user's tap.
@@ -120,7 +126,7 @@ There's no Xcode project — everything goes through `swift build`/`swift test` 
 - Every new helper command parses fixed tokens with range checks (the socket buffer is 512 bytes); never decode JSON from the socket.
 - Calibration steps live in `CalibrationRun` (Core, tested); the daemon only calls `advance`. Every start goes through `startCalibration()`, which clears `calibrateAt` and marks today's repeat run, so a plan can't fire a second calibration after a manual one.
 - Scheduled tasks never set the limit (zones own it and the app re-sends it every refresh). The LED key is only written once the user picks a mode (`lastLED`).
-- `AppIntents` need Xcode's metadata step, which SwiftPM does not run, so Shortcuts works through `baldente://` and the CLI instead.
+- `baldente://zone/<name>` pins an existing zone only (`Model.run`); Settings > General has Copy list / Copy command path for Shortcuts. `AppIntents` need Xcode's metadata step, which SwiftPM does not run, so Shortcuts works through `baldente://` and the CLI instead.
 
 ## Battery data
 - Health % = `NominalChargeCapacity / DesignCapacity` (what System Settings shows; `FullChargeCapacity` reads ~2 points lower). Legacy keys are fallbacks only.
