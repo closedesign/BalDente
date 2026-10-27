@@ -86,6 +86,11 @@ public struct Config: Codable, Equatable {
     public var sailing: Bool?
     /// The step (80, 85, 90 or 95) the user set as macOS's own charge limit, or nil if they don't use it. See `MacChargeLimit`.
     public var macLimit: Int?
+    /// Follow macOS's own setting (read with `pmset -g battlimit`) instead of `macLimit`. On unless the user picked a step by hand.
+    public var macLimitAuto: Bool?
+
+    /// The macOS limit in force: the detected one when following macOS, else the hand-picked step.
+    public func effectiveMacLimit(detected: Int?) -> Int? { macLimitAuto ?? (macLimit == nil) ? detected : macLimit }
 
     public init() {
         zones = [
@@ -108,6 +113,7 @@ public struct Config: Codable, Equatable {
         overnightCalibration = try c.decodeIfPresent(Bool.self, forKey: .overnightCalibration)
         sailing = try c.decodeIfPresent(Bool.self, forKey: .sailing)
         macLimit = try c.decodeIfPresent(Int.self, forKey: .macLimit)
+        macLimitAuto = try c.decodeIfPresent(Bool.self, forKey: .macLimitAuto)
     }
 
     /// Makes imported or hand-edited limits something the helper accepts (it rejects upper outside 5...100 or lower >= upper),

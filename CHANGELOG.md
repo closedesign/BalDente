@@ -4,6 +4,9 @@
 BalDente stays on 0.x until: it is notarized, it has been tested on at least three Mac models and two macOS versions, it has had a week of daily use
 without a charging bug, and the helper installs, updates and uninstalls cleanly on a fresh account.
 
+## 0.21 (pre-release)
+- **macOS Charge Limit is now automatic:** BalDente reads the limit you set in System Settings > Battery (via `pmset -g battlimit`) at launch, when you switch back to the app and after wake, so zones at that level are handed to macOS without any setup. The Charging page picker defaults to "Automatic (follow macOS)"; "Not using" or a fixed step still work, and a step you picked by hand before is kept.
+
 ## 0.20 (pre-release)
 - **Power source like macOS:** when the Mac is plugged in but no longer charging (BalDente's limit or macOS's own Charge Limit), the headline and ring now say "Using AC power" instead of "Charging to 80%". The panel's Battery section shows "Power source: Power Adapter" (with watts) or "Battery", like the macOS battery menu.
 - **Fix:** the status/ring caption ("Plugged in", "On battery") was too big for the small menu bar ring and overlapped it; it now uses a short caption ("AC power", "Battery") at a smaller size.

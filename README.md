@@ -83,8 +83,8 @@ four dots at the bottom are the volume.
 
 **Charging control**
 - Charge limit applied by a small root helper through the SMC. By default charging resumes one point under the limit; turn on **Sailing** (Charging page, off by default) to use a separate, lower resume level per zone (hysteresis). Pausing charging cuts the charger on current Macs, so a wide band runs the Mac from the battery.
-- **macOS Charge Limit:** macOS can hold 80, 85, 90 or 95% itself and run the Mac from the charger. Tell BalDente which step you set in
-  System Settings > Battery and zones at that limit are left to macOS; it reminds you to raise it when a zone needs more. Zones below it still use BalDente.
+- **macOS Charge Limit:** macOS can hold 80, 85, 90 or 95% itself and run the Mac from the charger. BalDente reads your setting from
+  System Settings > Battery automatically (or you can pick a step by hand), and zones at that limit are left to macOS; it reminds you to raise it when a zone needs more. Zones below it still use BalDente.
 - **Keep charging while busy:** when the Mac is working hard and the battery has only just reached its limit, the charger stays on for up to 2 more points (on by default, Charging page).
 - **On battery while plugged in:** History shows the hours each day the charger was cut at your limit, so you can see what a limit costs on this Mac.
 - **Drag the ring:** on Overview, drag the markers on the battery ring to set where charging stops (and where it resumes, with Sailing on),

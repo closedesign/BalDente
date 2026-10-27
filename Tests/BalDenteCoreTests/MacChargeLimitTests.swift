@@ -38,4 +38,38 @@ final class MacChargeLimitTests: XCTestCase {
         XCTAssertEqual(Config().zones.map(\.upper), [80, 80, 100])
         XCTAssertNil(try JSONDecoder().decode(Config.self, from: Data("{}".utf8)).macLimit)
     }
+
+    func testParsesPmsetBattlimit() {
+        let out = """
+        Battery level limits:
+        (
+                {
+                Terminated = 0;
+                chargeSocLimitReason = manualChargeLimit;
+                chargeSocLimitSoc = 80;
+            },
+                {
+                Terminated = 1;
+                chargeSocLimitReason = manualChargeLimit;
+                chargeSocLimitSoc = 85;
+            }
+        )
+        """
+        XCTAssertEqual(MacChargeLimit.parse(out), 80)
+        XCTAssertNil(MacChargeLimit.parse("Battery level limits:\n(\n)"))
+        XCTAssertNil(MacChargeLimit.parse(""))
+        XCTAssertNil(MacChargeLimit.parse("{ chargeSocLimitReason = other; chargeSocLimitSoc = 80;\n}"))
+    }
+
+    func testEffectiveLimitFollowsMacOSByDefault() {
+        var c = Config()
+        XCTAssertEqual(c.effectiveMacLimit(detected: 80), 80)
+        XCTAssertNil(c.effectiveMacLimit(detected: nil))
+        c.macLimit = 90                                   // an older config that picked a step by hand keeps it
+        XCTAssertEqual(c.effectiveMacLimit(detected: 80), 90)
+        c.macLimitAuto = true
+        XCTAssertEqual(c.effectiveMacLimit(detected: 80), 80)
+        c.macLimitAuto = false; c.macLimit = nil
+        XCTAssertNil(c.effectiveMacLimit(detected: 80))
+    }
 }

@@ -38,13 +38,19 @@ struct ChargingPage: View {
                 }
             }
             card("macOS Charge Limit", "bolt.horizontal.fill", .green) {
-                Picker("macOS charge limit", selection: Binding(get: { model.config.macLimit ?? 0 }, set: { model.config.macLimit = $0 == 0 ? nil : $0 })) {
+                Picker("macOS charge limit", selection: Binding(
+                    get: { model.config.macLimitAuto ?? (model.config.macLimit == nil) ? -1 : (model.config.macLimit ?? 0) },
+                    set: { v in
+                        model.config.macLimitAuto = v == -1
+                        if v != -1 { model.config.macLimit = v == 0 ? nil : v }
+                    })) {
+                    Text("Automatic (follow macOS)").tag(-1)
                     Text("Not using").tag(0)
                     ForEach(MacChargeLimit.steps, id: \.self) { Text("\($0)%").tag($0) }
                 }.settingAnchor("macOS charge limit")
-                Text(model.config.macLimit.map {
-                    "A zone set to \($0)% is left to macOS, which stops charging there and runs the Mac from the charger. BalDente only reminds you to change the macOS setting when a zone needs more than \($0)%. Set the same limit in System Settings > Battery first, or the battery will charge to 100%."
-                } ?? "macOS can hold the charge at 80, 85, 90 or 95% itself and run the Mac from the charger, which BalDente can't do. Set a limit in System Settings > Battery, pick the same step here, and zones at that limit are left to macOS. Zones below it still use BalDente.")
+                Text(model.macLimit.map {
+                    "macOS is set to hold \($0)%\(model.config.effectiveMacLimit(detected: nil) == nil ? " (read from System Settings > Battery)" : ""). A zone set to \($0)% is left to macOS, which stops charging there and runs the Mac from the charger. BalDente only reminds you to change the macOS setting when a zone needs more than \($0)%."
+                } ?? "No macOS charge limit is set, so BalDente holds every zone itself by cutting the charger. It follows System Settings > Battery automatically: set 80, 85, 90 or 95% there and zones at that level are left to macOS, which runs the Mac from the charger instead of the battery.")
                     .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
             }
             card("Sailing", "sailboat", .teal) {

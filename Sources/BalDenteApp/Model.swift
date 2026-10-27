@@ -136,6 +136,13 @@ final class Model: NSObject, ObservableObject, CLLocationManagerDelegate, UNUser
     private func beginUpdateVerification() {
         if let data = try? Data(contentsOf: Config.url) { backupStore.save(data, version: UserDefaults.standard.string(forKey: "lastVersionSeen") ?? "older") }
         backups = backupStore.list()
+        readMacLimit()
+        NotificationCenter.default.addObserver(forName: NSApplication.didBecomeActiveNotification, object: nil, queue: .main) { [weak self] _ in
+            Task { @MainActor in self?.readMacLimit() }
+        }
+        NSWorkspace.shared.notificationCenter.addObserver(forName: NSWorkspace.didWakeNotification, object: nil, queue: .main) { [weak self] _ in
+            Task { @MainActor in self?.readMacLimit() }
+        }
         verifyAgainst = UserDefaults.standard.data(forKey: Self.fingerprintKey).flatMap { try? JSONDecoder().decode(SettingsFingerprint.self, from: $0) }
     }
 
@@ -422,7 +429,7 @@ final class Model: NSObject, ObservableObject, CLLocationManagerDelegate, UNUser
         maybeAutoDischarge(t)
         maybeOvernightCalibration()
         remindMacLimit(t)
-        let sent = MacChargeLimit.sending(t, macLimit: config.macLimit)   // a zone macOS holds is sent as "no limit"
+        let sent = MacChargeLimit.sending(t, macLimit: macLimit)   // a zone macOS holds is sent as "no limit"
         let label = t.wireLabel
         let needsSend = status.map { sent != lastSent || $0.state.upper != sent.upper || $0.state.lower != sent.lower || $0.state.label != label } ?? false
         guard needsSend else { finishRefresh(); return }
@@ -1012,10 +1019,32 @@ final class Model: NSObject, ObservableObject, CLLocationManagerDelegate, UNUser
     // MARK: macOS charge limit
 
     private var macLimitBlocked = false
+    /// What `pmset -g battlimit` reported at the last read (nil: no limit set in macOS).
+    @Published private(set) var detectedMacLimit: Int?
+
+    /// The macOS charge limit in force, detected or hand-picked.
+    var macLimit: Int? { config.effectiveMacLimit(detected: detectedMacLimit) }
+
+    /// Reads macOS's limit off the main thread. Runs on launch, when the app is activated and after wake, never on a timer.
+    func readMacLimit() {
+        DispatchQueue.global(qos: .utility).async { [weak self] in
+            let p = Process()
+            p.executableURL = URL(fileURLWithPath: "/usr/bin/pmset"); p.arguments = ["-g", "battlimit"]
+            let pipe = Pipe(); p.standardOutput = pipe; p.standardError = FileHandle.nullDevice
+            guard (try? p.run()) != nil else { return }
+            let data = pipe.fileHandleForReading.readDataToEndOfFile(); p.waitUntilExit()
+            let limit = MacChargeLimit.parse(String(decoding: data, as: UTF8.self))
+            Task { @MainActor in
+                guard let self, self.detectedMacLimit != limit else { return }
+                self.detectedMacLimit = limit
+                self.refreshStatus()
+            }
+        }
+    }
 
     /// With a macOS limit in use, tell the user when a zone switch needs it raised, and when it can go back. Reminds, never changes.
     private func remindMacLimit(_ t: Target) {
-        guard let m = config.macLimit else { macLimitBlocked = false; return }
+        guard let m = macLimit else { macLimitBlocked = false; return }
         let blocked = MacChargeLimit.role(upper: t.upper, macLimit: m) == .blocked
         guard blocked != macLimitBlocked else { return }
         macLimitBlocked = blocked
