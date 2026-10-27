@@ -166,6 +166,10 @@ final class PowerAndAutomationTests: XCTestCase {
         XCTAssertEqual(p("baldente://lowpower/off"), .lowPower(false)); XCTAssertNil(p("baldente://lowpower"))
         XCTAssertNil(p("baldente://format-disk")); XCTAssertNil(p("https://topup")); XCTAssertNil(p("baldente://topup/maybe"))
         XCTAssertEqual(p("BALDENTE://Calibrate"), .calibrate)
+        XCTAssertEqual(p("baldente://zone/Home"), .pinZone("Home"))
+        XCTAssertEqual(p("baldente://zone/My%20Office"), .pinZone("My Office"))
+        XCTAssertNil(p("baldente://zone")); XCTAssertNil(p("baldente://zone/"))
+        XCTAssertNil(p("baldente://zone/" + String(repeating: "a", count: 41)))
     }
 
     func testAutomationStateNames() {

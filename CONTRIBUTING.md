@@ -12,3 +12,4 @@ swift test      # inside ~/Desktop use: swift test --scratch-path /tmp/baldente-
 - The daemon runs as root: keep its changes small, treat input as untrusted, and note that any change makes users update the helper.
 - Please don't copy code from GPL projects (batt, Battery-Toolkit). Ideas are fine.
 - Hardware reports help a lot: open an issue with your Mac model, macOS version and `swift run smcprobe` output.
+- Keep docs in sync with every user-visible change: README, CHANGELOG + VERSION, the in-app search index (`Pages.swift`), and the tutorial/tour text.

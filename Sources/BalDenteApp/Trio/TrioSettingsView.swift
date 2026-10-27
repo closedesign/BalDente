@@ -84,6 +84,12 @@ struct TrioPageView: View {
                        "When enabled, the percentage becomes a bolt while charging. When plugged in but holding, the percentage shows.") {
                 Toggle("", isOn: p.showChargingIndicator).labelsHidden().toggleStyle(.switch)
             }
+            SettingRow("wifi", .blue, "Show battery percentage in the connection position",
+                       "Replaces the Wi-Fi or connection symbol. Independent of the top battery indicator.") {
+                Toggle("", isOn: p.percentInMiddle).labelsHidden().toggleStyle(.switch)
+            }
+        }
+        SettingsGroup("Charging Effect") {
             SettingRow("sparkles", .yellow, "Menu bar charging effect",
                        "Animate the charging highlight in the menu bar. Stops when Reduce Motion is on.") {
                 Toggle("", isOn: p.menuBarChargingEffect).labelsHidden().toggleStyle(.switch)
@@ -106,6 +112,8 @@ struct TrioPageView: View {
                        "How fast the charging animation runs: the glow, the heartbeat and the wave. 1× is the default; lower is slower.") {
                 ValueSlider(value: p.chargeWaveSpeed, range: 0.2...6, step: 0.1) { String(format: "%.1f×", $0) }
             }
+        }
+        SettingsGroup("Text Beside the Icon") {
             SettingRow("percent", .green, "Show percentage next to the icon while charging",
                        "Adds the battery level as text beside the icon while the ring shows the bolt.") {
                 Toggle("", isOn: p.showPercentWhileCharging).labelsHidden().toggleStyle(.switch)
@@ -116,10 +124,8 @@ struct TrioPageView: View {
             SettingRow("textformat.size", .blue, "Percentage/bolt size", "The percentage and bolt share this size.") {
                 ValueSlider(value: p.symbolScale, range: 0.8...1.4, step: 0.05) { "\(Int(($0 * 100).rounded()))%" }
             }
-            SettingRow("wifi", .blue, "Show battery percentage in the connection position",
-                       "Replaces the Wi-Fi or connection symbol. Independent of the top battery indicator.") {
-                Toggle("", isOn: p.percentInMiddle).labelsHidden().toggleStyle(.switch)
-            }
+        }
+        SettingsGroup("Ring Colors") {
             SettingRow("paintpalette.fill", .orange, "Color the arc by battery state",
                        "Low battery is red, Low Power Mode is yellow, and charging or connected power is green.") {
                 Toggle("", isOn: p.statusColors).labelsHidden().toggleStyle(.switch)

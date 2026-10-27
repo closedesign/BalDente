@@ -1165,6 +1165,9 @@ final class Model: NSObject, ObservableObject, CLLocationManagerDelegate, UNUser
         case .lowPower(let on): cmd("lowpower \(on ? "on" : "off")")
         case .automatic: config.overrideZone = nil
         case .cancelTask: cmd("cancel")
+        case .pinZone(let n):
+            // Only an existing zone can be pinned; a link can't invent one.
+            if let z = config.zones.first(where: { $0.name.caseInsensitiveCompare(n) == .orderedSame }) { config.overrideZone = z.name }
         }
     }
 
