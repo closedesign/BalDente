@@ -54,12 +54,12 @@ A **zone** is a charge limit that switches on by itself, based on where you are:
 
 - **By Wi-Fi network:** add your home, school or office networks to a zone and its limit applies the moment you connect.
 - **By saved place:** draw a circle on a map for places with no known Wi-Fi.
-- **Each zone has its own limit and resume level**, a name, an icon and its own background color.
-- **Out of the box BalDente limits charging to 50% at home** (it resumes at 45%), so a Mac that lives on its charger
-  stops wearing the battery. Add your home Wi-Fi to the **Home** zone and it happens automatically. The other starter zones are
-  **School** (80%), **Travel** (100%), and **Everywhere else** (80%) for anywhere that matches no zone.
+- **Each zone has its own limit** (and resume level when Sailing is on), a name, an icon and its own background color.
+- **Out of the box BalDente limits charging to 80%** (it resumes at 75%), so a Mac that lives on its charger
+  stops sitting at a full charge. The starter zones are **Home** (80%), **School** (80%), **Travel** (100%), and **Everywhere else** (80%)
+  for anywhere that matches no zone. Add your Wi-Fi to a zone and its limit applies automatically; lower a zone's limit for more battery life.
 - **The first-run tour shows these defaults up front** and offers a simpler **80% everywhere** instead. While charging is held
-  below 100%, Overview and the menu bar panel say why ("Holding at 50% (Home zone)") with one-click Top Up and Ready by. Plugged in but not charging, it says "Using AC power" and the panel shows the power source (Power Adapter or Battery) like the macOS battery menu.
+  below 100%, Overview and the menu bar panel say why ("Holding at 80% (Home zone)") with one-click Top Up and Ready by. Plugged in but not charging, it says "Using AC power" and the panel shows the power source (Power Adapter or Battery) like the macOS battery menu.
 - **Every zone switch is announced** with its reason (for example "connected to HomeNet" or "you pinned it").
 - Pin any zone by hand, or tap **Automatic** to let Wi-Fi and location decide again.
 - Create as many zones as you like, rename them, and back them up with **Export settings**.
@@ -82,8 +82,12 @@ four dots at the bottom are the volume.
 ## All features
 
 **Charging control**
-- Charge limit with a separate resume level (hysteresis), applied by a small root helper through the SMC.
-- **Drag the ring:** on Overview, drag the two markers on the battery ring to set where charging stops and where it resumes,
+- Charge limit applied by a small root helper through the SMC. By default charging resumes one point under the limit; turn on **Sailing** (Charging page, off by default) to use a separate, lower resume level per zone (hysteresis). Pausing charging cuts the charger on current Macs, so a wide band runs the Mac from the battery.
+- **macOS Charge Limit:** macOS can hold 80, 85, 90 or 95% itself and run the Mac from the charger. Tell BalDente which step you set in
+  System Settings > Battery and zones at that limit are left to macOS; it reminds you to raise it when a zone needs more. Zones below it still use BalDente.
+- **Keep charging while busy:** when the Mac is working hard and the battery has only just reached its limit, the charger stays on for up to 2 more points (on by default, Charging page).
+- **On battery while plugged in:** History shows the hours each day the charger was cut at your limit, so you can see what a limit costs on this Mac.
+- **Drag the ring:** on Overview, drag the markers on the battery ring to set where charging stops (and where it resumes, with Sailing on),
   for whichever zone is active (or "Everywhere else").
 - **Top Up to 100%** for a trip, then back to your zone's limit.
 - **Travel mode:** hold 100% for 24 hours, then return to normal.

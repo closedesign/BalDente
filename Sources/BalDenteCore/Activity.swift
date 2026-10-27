@@ -2,7 +2,7 @@ import Foundation
 
 /// Groups of announcements the user can mute separately. The activity log records every one regardless.
 public enum NotifyCategory: String, Codable, CaseIterable, Identifiable {
-    case zones, readyBy, heat, habits, manual, helper
+    case zones, readyBy, heat, habits, manual, helper, system
     public var id: String { rawValue }
     public var title: String {
         switch self {
@@ -12,6 +12,7 @@ public enum NotifyCategory: String, Codable, CaseIterable, Identifiable {
         case .habits: "Habit and zone suggestions"
         case .manual: "Top Up, Travel mode and tasks"
         case .helper: "Helper problems"
+        case .system: "Mac and macOS changes"
         }
     }
 }
@@ -36,6 +37,10 @@ public enum ChangeEvent: Equatable {
     case calibrationDue(days: Int?)
     case helperOffline
     case helperBack
+    /// A macOS update made charge-control keys readable that weren't before.
+    case chargeKeysOpened([String])
+    /// A zone switch needs macOS's charge limit raised (`blocked`) or lets the user set it again.
+    case macLimit(blocked: Bool, zone: String, upper: Int, macLimit: Int)
     /// An action started from a baldente:// link or the command line.
     case automation(String)
 
@@ -47,6 +52,7 @@ public enum ChangeEvent: Equatable {
         case .habitSuggested, .habitAccepted, .networkSuggested: .habits
         case .task, .defaultsChosen, .calibrationEnded, .calibrationDue, .automation: .manual
         case .helperOffline, .helperBack: .helper
+        case .chargeKeysOpened, .macLimit: .system
         }
     }
 
@@ -84,6 +90,8 @@ public enum ChangeEvent: Equatable {
         case .defaultsChosen(let name): return "Limits set: \(name)"
         case .helperOffline: return "BalDente's helper isn't answering"
         case .helperBack: return "Helper is back"
+        case .chargeKeysOpened: return "macOS opened up charge-control keys"
+        case .macLimit(let blocked, let zone, _, _): return blocked ? "Raise macOS's charge limit for \(ChangeEvent.zoneName(zone))" : "macOS's charge limit can go back on"
         case .automation(let what): return "Shortcut: \(what)"
         }
     }
@@ -122,6 +130,13 @@ public enum ChangeEvent: Equatable {
         case .defaultsChosen: return "You can change any zone's limits on the Zones page."
         case .helperOffline: return "Charging limits aren't being applied. Open BalDente > General to reinstall it."
         case .helperBack: return "Charging limits are being applied again."
+        case .macLimit(let blocked, let zone, let upper, let mac):
+            if blocked {
+                let need = MacChargeLimit.neededSetting(for: upper)
+                return "\(ChangeEvent.zoneName(zone)) charges to \(upper)%, but macOS's charge limit is \(mac)% and would stop it there. In System Settings > Battery set the limit to \(need)%."
+            }
+            return "\(ChangeEvent.zoneName(zone)) is at \(upper)% again. You can set macOS's charge limit back to \(mac)% in System Settings > Battery."
+        case .chargeKeysOpened(let keys): return "The helper can now read \(keys.joined(separator: ", ")). They may let the Mac run from the charger while charging is paused; BalDente doesn't use them yet."
         case .automation: return "Started by a baldente:// link, such as from Apple Shortcuts."
         }
     }

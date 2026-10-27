@@ -116,9 +116,11 @@ struct DefaultLimitsSheet: View {
             }
             Text("These limits apply when no zone matches your Wi-Fi or location.").foregroundStyle(.secondary)
             slider("Stop charging at", $model.config.defaultUpper, 20...100)
-                .onChange(of: model.config.defaultUpper) { _, u in if model.config.defaultLower >= u { model.config.defaultLower = u - 1 } }
-            slider("Resume at", $model.config.defaultLower, 5...99)
-                .onChange(of: model.config.defaultLower) { _, l in if model.config.defaultUpper <= l { model.config.defaultUpper = l + 1 } }
+                .onChange(of: model.config.defaultUpper) { _, u in if model.config.defaultLower >= u { model.config.defaultLower = max(5, u - 5) } }
+            if model.sailing {
+                slider("Resume at", $model.config.defaultLower, 5...99)
+                    .onChange(of: model.config.defaultLower) { _, l in if model.config.defaultUpper <= l { model.config.defaultUpper = l + 5 } }
+            }
         }
         .padding(30).frame(width: 460).presentationBackground(.ultraThinMaterial)
     }
@@ -131,7 +133,7 @@ struct DefaultLimitsSheet: View {
                 Text("\(value.wrappedValue)%").font(.system(size: 36, weight: .thin, design: .rounded)).monospacedDigit()
             }
             Slider(value: Binding(get: { Double(value.wrappedValue) }, set: { value.wrappedValue = Int($0) }),
-                   in: Double(range.lowerBound)...Double(range.upperBound), step: 1)
+                   in: Double(range.lowerBound)...Double(range.upperBound), step: 5)
         }
     }
 }
@@ -417,11 +419,13 @@ struct ZoneEditor: View {
                         }
                     }
                     limit("Stop charging at", value: z.upper, range: 20...100)
-                        .onChange(of: z.wrappedValue.upper) { _, u in if z.wrappedValue.lower >= u { z.wrappedValue.lower = u - 1 } }
-                    limit("Resume at (sailing floor)", value: z.lower, range: 5...99)
-                        .onChange(of: z.wrappedValue.lower) { _, l in if z.wrappedValue.upper <= l { z.wrappedValue.upper = l + 1 } }
-                    Text("Between the two numbers the battery sails: no charging, no extra wear.")
-                        .font(.caption).foregroundStyle(.secondary)
+                        .onChange(of: z.wrappedValue.upper) { _, u in if z.wrappedValue.lower >= u { z.wrappedValue.lower = max(5, u - 5) } }
+                    if model.sailing {
+                        limit("Resume at (sailing floor)", value: z.lower, range: 5...99)
+                            .onChange(of: z.wrappedValue.lower) { _, l in if z.wrappedValue.upper <= l { z.wrappedValue.upper = l + 5 } }
+                        Text("Between the two numbers the battery sails: no charging, no extra wear.")
+                            .font(.caption).foregroundStyle(.secondary)
+                    }
                     wifiSection(z)
                     locationSection(z)
                     Button("Delete zone", role: .destructive) {
@@ -485,7 +489,7 @@ struct ZoneEditor: View {
                 Text("\(value.wrappedValue)%").font(.system(size: 36, weight: .thin, design: .rounded)).monospacedDigit()
             }
             Slider(value: Binding(get: { Double(value.wrappedValue) }, set: { value.wrappedValue = Int($0) }),
-                   in: Double(range.lowerBound)...Double(range.upperBound), step: 1)
+                   in: Double(range.lowerBound)...Double(range.upperBound), step: 5)
         }
     }
 }

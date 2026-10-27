@@ -63,7 +63,7 @@ struct TutorialSheet: View {
         case 0:
             page("battery.75percent", .green, "Why limit charging?",
                  "A lithium-ion battery wears fastest when it sits full and warm. If your Mac is plugged in most of the day, holding it lower slows that wear a lot.") {
-                bullet("pause.circle.fill", "BalDente pauses the charger at the upper limit and lets it resume at the lower one. The Mac runs from the adapter meanwhile.")
+                bullet("pause.circle.fill", "BalDente pauses the charger at the limit and resumes one point below it (turn on Sailing to let it drift further down first). On this kind of Mac pausing cuts the charger, so it runs from the battery meanwhile.")
                 bullet("arrow.triangle.2.circlepath", "Fewer hours at 100% means more years before the battery needs replacing.")
             }
         case 1:

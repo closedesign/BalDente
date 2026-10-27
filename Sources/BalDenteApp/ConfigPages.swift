@@ -23,13 +23,14 @@ struct ZonesPage: View {
             }
             LazyVGrid(columns: [GridItem(.adaptive(minimum: 210, maximum: 230), spacing: 20)], alignment: .leading, spacing: 20) {
                 ForEach(model.config.zones) { z in
-                    ZoneTile(zone: z, active: model.target.zoneID == z.id,
+                    ZoneTile(zone: z.showing(sailing: model.sailing), active: model.target.zoneID == z.id,
                              pinned: model.config.overrideZone == z.name,
                              onSelect: { model.config.overrideZone = model.config.overrideZone == z.name ? nil : z.name },
                              onEdit: { sheet = .zone(z.id) })
                 }
                 AddTile { sheet = .zone(model.addZone().id) }
-                DefaultTile(upper: model.config.defaultUpper, lower: model.config.defaultLower,
+                DefaultTile(upper: model.config.defaultUpper,
+                            lower: ResumeLevel.effective(upper: model.config.defaultUpper, lower: model.config.defaultLower, sailing: model.sailing),
                             active: model.target.zoneID == nil && model.target.label == "Default") { sheet = .defaults }
                     .settingAnchor("Everywhere else")
             }

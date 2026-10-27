@@ -206,6 +206,9 @@ final class Model: NSObject, ObservableObject, CLLocationManagerDelegate, UNUser
     /// A zone that keeps the battery above 80% for many hours a week. Suggest only: lowering it is the user's tap.
     @Published private(set) var wearSuggestion: WearSuggestion?
     private var lastWearSample: Date?
+    /// Hours the charger was cut while plugged in this week. Not @Published, like `zoneWear`: only History reads it.
+    private(set) var batteryHold = (try? Data(contentsOf: Model.batteryHoldURL)).flatMap { try? JSONDecoder().decode(BatteryHold.self, from: $0) } ?? BatteryHold()
+    private var holdUnsaved: TimeInterval = 0
     private var wearUnsaved: TimeInterval = 0
     /// An unplug waiting for a fresh status: with older SMC keys a held charger also looks unplugged, so it's confirmed first.
     private var pendingUnplug: Date?
@@ -411,21 +414,26 @@ final class Model: NSObject, ObservableObject, CLLocationManagerDelegate, UNUser
         else if topUp {
             if percent >= 100 { topUp = false } else { t = Target(label: "Top Up", upper: 100, lower: 99) }
         }
+        t = t.sending(sailing: sailing)   // the ring, panel and helper all see the level that is really enforced
         target = t
         recordWear(t)
+        recordHold()
+        checkChargeKeys()
         maybeAutoDischarge(t)
         maybeOvernightCalibration()
+        remindMacLimit(t)
+        let sent = MacChargeLimit.sending(t, macLimit: config.macLimit)   // a zone macOS holds is sent as "no limit"
         let label = t.wireLabel
-        let needsSend = status.map { t != lastSent || $0.state.upper != t.upper || $0.state.lower != t.lower || $0.state.label != label } ?? false
+        let needsSend = status.map { sent != lastSent || $0.state.upper != sent.upper || $0.state.lower != sent.lower || $0.state.label != label } ?? false
         guard needsSend else { finishRefresh(); return }
         daemonQueue.async { [weak self] in
-            let ok = DaemonClient.send("limit \(t.upper) \(t.lower) \(label)") == "ok"
+            let ok = DaemonClient.send("limit \(sent.upper) \(sent.lower) \(label)") == "ok"
             let st = ok ? DaemonClient.status() : nil
             DispatchQueue.main.async {
                 MainActor.assumeIsolated {
                     guard let self else { return }
                     if ok {
-                        self.lastSent = t
+                        self.lastSent = sent
                         if var s = st { if s.percent < 0 { s.percent = self.system.power.percent }; self.status = s }
                     }
                     self.finishRefresh()
@@ -609,7 +617,7 @@ final class Model: NSObject, ObservableObject, CLLocationManagerDelegate, UNUser
             helper: status != nil ? (helperOutdated ? "update available" : "running") : helperInstalled ? "not responding" : "not installed",
             backend: status?.backend, percent: status?.percent, tempC: status?.tempC,
             limit: "\(t.upper)% / \(t.lower)% (\(t.label))", zoneCount: config.zones.count, heatProtection: status?.state.heatProtection,
-            recent: activity.entries.prefix(10).map { $0.title }, lastError: setupError)
+            recent: activity.entries.prefix(10).map { $0.title }, lastError: setupError, chargeKeys: status?.chargeKeys)
     }
 
     func copyDiagnostics() {
@@ -695,6 +703,8 @@ final class Model: NSObject, ObservableObject, CLLocationManagerDelegate, UNUser
     }
 
     /// The ring's markers can be dragged when the limit comes from a zone or "Everywhere else"; Top Up and Travel Mode are fixed at 100%.
+    var sailing: Bool { config.sailing ?? false }
+
     var ringEditable: Bool { target.zoneID != nil || target.label == "Default" }
 
     /// Saves limits dragged on the Overview ring into whatever set the current target. Called once when the drag ends,
@@ -703,9 +713,11 @@ final class Model: NSObject, ObservableObject, CLLocationManagerDelegate, UNUser
         // One assignment, so didSet saves once and the helper never sees a half-updated pair (lower above upper).
         var c = config
         if let id = target.zoneID, let i = c.zones.firstIndex(where: { $0.id == id }) {
-            c.zones[i].upper = upper; c.zones[i].lower = lower
+            c.zones[i].upper = upper
+            if sailing { c.zones[i].lower = lower } else { c.zones[i].lower = min(c.zones[i].lower, upper - 1) }
         } else if target.zoneID == nil, target.label == "Default" {
-            c.defaultUpper = upper; c.defaultLower = lower
+            c.defaultUpper = upper
+            if sailing { c.defaultLower = lower } else { c.defaultLower = min(c.defaultLower, upper - 1) }
         }
         if c != config { config = c }
     }
@@ -865,6 +877,8 @@ final class Model: NSObject, ObservableObject, CLLocationManagerDelegate, UNUser
         networkLog = NetworkLog(); networkSuggestion = nil
         try? FileManager.default.removeItem(at: Self.networkLogURL)
         zoneWear = ZoneWear(); wearSuggestion = nil; wearUnsaved = 0
+        batteryHold = BatteryHold(); holdUnsaved = 0
+        try? FileManager.default.removeItem(at: Self.batteryHoldURL)
         try? FileManager.default.removeItem(at: Self.zoneWearURL)
         UserDefaults.standard.removeObject(forKey: "wearDismissed")
         for k in ["networkSnoozeUntil", "networkDismissed", "networkNotified"] { UserDefaults.standard.removeObject(forKey: k) }
@@ -993,6 +1007,47 @@ final class Model: NSObject, ObservableObject, CLLocationManagerDelegate, UNUser
         guard zoneWear.record(zone: t.label, percent: percent, elapsed: step, at: now) else { return }
         wearUnsaved += step
         if wearUnsaved >= 600 { saveWear(); evaluateWear() }
+    }
+
+    // MARK: macOS charge limit
+
+    private var macLimitBlocked = false
+
+    /// With a macOS limit in use, tell the user when a zone switch needs it raised, and when it can go back. Reminds, never changes.
+    private func remindMacLimit(_ t: Target) {
+        guard let m = config.macLimit else { macLimitBlocked = false; return }
+        let blocked = MacChargeLimit.role(upper: t.upper, macLimit: m) == .blocked
+        guard blocked != macLimitBlocked else { return }
+        macLimitBlocked = blocked
+        announce(.macLimit(blocked: blocked, zone: t.label, upper: t.upper, macLimit: m))
+    }
+
+    // MARK: Time on battery while plugged in
+
+    nonisolated static var batteryHoldURL: URL { Config.url.deletingLastPathComponent().appendingPathComponent("battery-hold.json") }
+
+    /// Shares the zone-wear sample clock, so both advance by the same step; saved every ten minutes of counted time.
+    private func recordHold() {
+        guard let last = lastWearSample, status != nil else { return }
+        let step = Date().timeIntervalSince(last)
+        guard batteryHold.record(held: holding && !onBattery, elapsed: step, at: Date()) else { return }
+        holdUnsaved += step
+        if holdUnsaved >= 600 { saveHold() }
+    }
+
+    private func saveHold() {
+        holdUnsaved = 0
+        try? FileManager.default.createDirectory(at: Self.batteryHoldURL.deletingLastPathComponent(), withIntermediateDirectories: true)
+        if let d = try? JSONEncoder().encode(batteryHold) { try? d.write(to: Self.batteryHoldURL, options: .atomic) }
+    }
+
+    /// The helper reports which charge-control keys this Mac lets it read. If a macOS update opens any, say so once per set of keys.
+    private func checkChargeKeys() {
+        guard let keys = status?.chargeKeys, !keys.isEmpty else { return }
+        let signature = keys.sorted().joined(separator: ",")
+        guard UserDefaults.standard.string(forKey: "chargeKeysSeen") != signature else { return }
+        UserDefaults.standard.set(signature, forKey: "chargeKeysSeen")
+        announce(.chargeKeysOpened(keys.sorted()))
     }
 
     private func saveWear() {

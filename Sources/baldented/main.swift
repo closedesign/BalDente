@@ -24,6 +24,7 @@ func saveState() {
 }
 
 var heatHold = false
+let chargeKeys = ChargeKeys.watched.filter { SMC.hasKey($0) }   // read once: only a reboot after a macOS update changes it
 var batteryHot = false
 
 /// Fixed Gregorian POSIX format, so the "already ran today" check can't drift with the system calendar or locale.
@@ -239,7 +240,12 @@ func apply() {
         heatHold = HeatLimit.shouldHold(hot: batteryHot, percent: pct)   // never run a low battery flat to cool it
         if heatHold { want = false }
         else if !state.enabled { want = true }
-        else if pct >= state.upper { want = false }
+        else if pct >= state.upper {
+            var load = [0.0]
+            _ = getloadavg(&load, 1)
+            want = LoadGuard.keepCharging(enabled: state.loadGuard, load1: load[0], cores: ProcessInfo.processInfo.activeProcessorCount,
+                                          percent: pct, upper: state.upper)   // busy and only just at the limit: don't run the Mac from its battery
+        }
         else if pct <= state.lower { want = true }
         else { want = adapterOn }   // inside the sailing range: leave things as they are
     }
@@ -266,7 +272,7 @@ func handle(_ line: String) -> String {
     case "status":
         let s = Status(percent: batteryPercent() ?? -1, adapterOn: backend.isAdapterOn(), state: state,
                        backend: backend.name, tempC: BatteryInfo.read()?.tempC, heatHold: heatHold, ledAvailable: ledAvailable,
-                       heatSkipped: state.heatProtection && batteryHot && !heatHold && !state.task.active)
+                       heatSkipped: state.heatProtection && batteryHot && !heatHold && !state.task.active, chargeKeys: chargeKeys)
         return String(decoding: (try? JSONEncoder().encode(s)) ?? Data(), as: UTF8.self)
     case "limit":
         guard p.count >= 3, let u = Int(p[1]), let l = Int(p[2]), (5...100).contains(u), (1..<u).contains(l)
@@ -324,6 +330,9 @@ func handle(_ line: String) -> String {
     case "cancel":
         if state.task.kind == "calibrate" { state.calibrateAt = nil; print("calibration cancelled") }   // a leftover plan must not start another one later
         state.task = TaskState()
+    case "loadguard":
+        guard p.count == 2, ["on", "off"].contains(p[1]) else { return "error: usage loadguard on|off" }
+        state.loadGuard = p[1] == "on"
     case "sleepstop", "stayawake":
         guard p.count == 2, ["on", "off"].contains(p[1]) else { return "error: usage \(p[0]) on|off" }
         if p[0] == "sleepstop" { state.stopWhenSleeping = p[1] == "on" } else { state.stayAwake = p[1] == "on" }

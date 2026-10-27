@@ -7,7 +7,7 @@ final class OnboardingTests: XCTestCase {
     func testDefaultLinesComeFromConfig() {
         let l = Defaults.lines()
         XCTAssertEqual(l.map(\.name), ["Home", "School", "Travel", "Everywhere else"])
-        XCTAssertEqual(l.first?.text, "Home: holds at 50%, resumes at 45%")
+        XCTAssertEqual(l.first?.text, "Home: holds at 80%, resumes at 75%")
         XCTAssertEqual(l[1].text, "School: holds at 80%, resumes at 75%")
         XCTAssertEqual(l[2].text, "Travel: charges to 100%")
         XCTAssertEqual(l.last?.upper, Config().defaultUpper)

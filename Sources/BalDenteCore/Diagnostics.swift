@@ -14,13 +14,15 @@ public struct DiagnosticsInfo {
     public var heatProtection: Bool?
     public var recent: [String]
     public var lastError: String?
+    /// Charge-control keys the helper could read (nil: older helper).
+    public var chargeKeys: [String]?
 
     public init(appVersion: String, macOS: String, mac: String, helper: String, backend: String? = nil, percent: Int? = nil,
                 tempC: Double? = nil, limit: String? = nil, zoneCount: Int, heatProtection: Bool? = nil,
-                recent: [String] = [], lastError: String? = nil) {
+                recent: [String] = [], lastError: String? = nil, chargeKeys: [String]? = nil) {
         self.appVersion = appVersion; self.macOS = macOS; self.mac = mac; self.helper = helper; self.backend = backend
         self.percent = percent; self.tempC = tempC; self.limit = limit; self.zoneCount = zoneCount
-        self.heatProtection = heatProtection; self.recent = recent; self.lastError = lastError
+        self.heatProtection = heatProtection; self.recent = recent; self.lastError = lastError; self.chargeKeys = chargeKeys
     }
 
     public var report: String {
@@ -28,6 +30,7 @@ public struct DiagnosticsInfo {
         if let b = backend { l.append("Charging backend: \(b)") }
         if let p = percent { l.append("Battery: \(p)%" + (tempC.map { String(format: ", %.1f °C", $0) } ?? "")) }
         if let x = limit { l.append("Limit: \(x)") }
+        if let k = chargeKeys { l.append("Pass-through keys readable: \(k.isEmpty ? "none" : k.joined(separator: ", "))") }
         if let h = heatProtection { l.append("Heat Protection: \(h ? "on" : "off")") }
         l.append("Zones: \(zoneCount)")
         if let e = lastError, !e.isEmpty { l.append("Last error: \(e)") }

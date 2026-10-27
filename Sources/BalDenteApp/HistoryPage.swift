@@ -13,7 +13,7 @@ struct HistoryPage: View {
         VStack(alignment: .leading, spacing: 18) {
           MasonryLayout(minColumn: 460) {
             if !loaded { ProgressView().controlSize(.small) } else { advisor }
-            if loaded { zoneWear }
+            if loaded { zoneWear; onBatteryCard }
             if loaded {
                 if points.count < 2 {
                 SettingsGroup("Battery History") {
@@ -40,6 +40,30 @@ struct HistoryPage: View {
         let csv = await Task.detached { try? String(contentsOf: Model.historyURL, encoding: .utf8) }.value
         points = HealthHistory.downsample(HealthHistory.parse(csv ?? ""), max: 200)
         loaded = true
+    }
+
+    /// Hours this week the charger was cut while plugged in, so the Mac ran from its battery.
+    private var onBatteryCard: some View {
+        let days = model.batteryHold.week()
+        let top = max(days.map(\.hours).max() ?? 0, 0.1)
+        let total = model.batteryHold.totalHours()
+        return SettingsGroup("On battery while plugged in") {
+            if model.batteryHold.isEmpty {
+                Text("Nothing yet. Pausing the charger at your limit runs this Mac from its battery; the hours it happens show here.")
+                    .font(.callout).foregroundStyle(.secondary)
+            } else {
+                Text("Last 7 days: \(total < 1 ? "under an hour" : "\(Int(total.rounded())) h"). Each hour is battery use the charger would have covered. A higher resume level or Sailing off keeps it low.")
+                    .font(.callout).foregroundStyle(.secondary)
+                HStack(alignment: .bottom, spacing: 6) {
+                    ForEach(days, id: \.day) { d in
+                        VStack(spacing: 4) {
+                            Capsule().fill(Color.blue.gradient).frame(height: max(3, 54 * d.hours / top))
+                            Text(d.day.formatted(.dateTime.weekday(.narrow))).font(.caption2).foregroundStyle(.secondary)
+                        }.frame(maxWidth: .infinity, alignment: .bottom)
+                    }
+                }.frame(height: 72, alignment: .bottom)
+            }
+        }
     }
 
     /// Hours above 80% per zone this week, and the "lower it?" suggestion when one zone keeps the battery high.

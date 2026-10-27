@@ -24,7 +24,7 @@ final class ZoneWearTests: XCTestCase {
     func testSuggestion() {
         var w = ZoneWear()
         for d in 0..<4 { w.days[ZoneWear.dayKey(now.addingTimeInterval(-Double(d) * 86400), calendar: cal)] = ["Travel": 5 * 3600, "Home": 9 * 3600] }
-        let config = Config()   // Home 50%, Travel 100%
+        let config = Config()   // Home 80%, Travel 100%
         let s = WearSuggestion.suggest(w, config: config, now: now, calendar: cal)
         XCTAssertEqual(s?.zone, "Travel")
         XCTAssertEqual(s?.hours, 20)
