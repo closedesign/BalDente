@@ -45,7 +45,7 @@ struct ChargingCommands: Commands {
         CommandMenu("Charging") {
             Button(model.topUp ? "Cancel Top Up" : "Top Up to 100%") { model.toggleTopUp() }
                 .keyboardShortcut("t")
-            Button("Start Calibration") { model.cmd("calibrate") }.keyboardShortcut("k")
+            Button("Start Calibration") { model.cmd("calibrate") }.keyboardShortcut("k").disabled(model.task != nil)
             Button("Cancel Running Task") { model.cmd("cancel") }.keyboardShortcut(".")
             Divider()
             Button("Automatic Zone") { model.config.overrideZone = nil }.keyboardShortcut("0")

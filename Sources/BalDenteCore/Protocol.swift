@@ -122,6 +122,11 @@ public struct TaskState: Codable, Equatable {
     public var phase = ""          // calibrate: discharge | charge | rest
     public var target = 0
     public var restUntil: Date?
+    /// When the calibration began and when its current step began (nil from older helpers).
+    public var started: Date?
+    public var phaseStarted: Date?
+    /// Set while a calibration is paused: the normal limiter runs and the 24-hour clock stops.
+    public var pausedAt: Date?
     public init() {}
     public var active: Bool { kind != "none" }
 }
@@ -140,6 +145,8 @@ public struct LimiterState: Codable, Equatable {
     public var chargeSchedule = ChargeSchedule()
     /// One-off calibration planned for a specific moment, e.g. tonight at 3 AM.
     public var calibrateAt: Date?
+    /// When the helper last saw a calibration run its full course.
+    public var lastCalibrated: Date?
     public var task = TaskState()
     /// Keep the charger off while the Mac sleeps (above `sleepFloor`), so it does not charge past the limit asleep.
     public var stopWhenSleeping = false
@@ -169,6 +176,7 @@ public struct LimiterState: Codable, Equatable {
         schedule = try c.decodeIfPresent(Schedule.self, forKey: .schedule) ?? Schedule()
         chargeSchedule = try c.decodeIfPresent(ChargeSchedule.self, forKey: .chargeSchedule) ?? ChargeSchedule()
         calibrateAt = try c.decodeIfPresent(Date.self, forKey: .calibrateAt)
+        lastCalibrated = try c.decodeIfPresent(Date.self, forKey: .lastCalibrated)
         task = try c.decodeIfPresent(TaskState.self, forKey: .task) ?? TaskState()
         stopWhenSleeping = try c.decodeIfPresent(Bool.self, forKey: .stopWhenSleeping) ?? false
         stayAwake = try c.decodeIfPresent(Bool.self, forKey: .stayAwake) ?? false
@@ -189,11 +197,13 @@ public struct Status: Codable {
     public var heatHold = false
     /// Whether this Mac exposes the MagSafe LED key. Optional so an older helper's status still decodes.
     public var ledAvailable: Bool?
+    /// True while the battery is over the heat limit but too low to hold (`HeatLimit.chargeFloor`). Nil from older helpers.
+    public var heatSkipped: Bool?
 
     public init(percent: Int, adapterOn: Bool, state: LimiterState, backend: String, tempC: Double? = nil, heatHold: Bool = false,
-                ledAvailable: Bool? = nil) {
+                ledAvailable: Bool? = nil, heatSkipped: Bool? = nil) {
         self.percent = percent; self.adapterOn = adapterOn; self.state = state; self.backend = backend
-        self.tempC = tempC; self.heatHold = heatHold; self.ledAvailable = ledAvailable
+        self.tempC = tempC; self.heatHold = heatHold; self.ledAvailable = ledAvailable; self.heatSkipped = heatSkipped
     }
 
     // Tolerant like `LimiterState`: a helper that predates a field must not make the app think it's offline.
@@ -206,5 +216,6 @@ public struct Status: Codable {
         tempC = try c.decodeIfPresent(Double.self, forKey: .tempC)
         heatHold = try c.decodeIfPresent(Bool.self, forKey: .heatHold) ?? false
         ledAvailable = try c.decodeIfPresent(Bool.self, forKey: .ledAvailable)
+        heatSkipped = try c.decodeIfPresent(Bool.self, forKey: .heatSkipped)
     }
 }

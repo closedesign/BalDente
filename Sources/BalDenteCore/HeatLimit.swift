@@ -14,6 +14,13 @@ public enum HeatLimit {
     /// Above this the limit protects little: it is the usual upper cut-off for charging a lithium-ion cell.
     public static let ratedChargeMax = 45
 
+    /// The adapter backends cut power entirely, so a heat pause runs the Mac from the battery. Below this it charges anyway:
+    /// a warm battery is far better than a flat one (the firmware still slows charging when it's truly hot).
+    public static let chargeFloor = 20
+
+    /// Whether heat protection should hold the charger off. `hot` is the latched over-limit state (it clears 3 °C below the limit).
+    public static func shouldHold(hot: Bool, percent: Int) -> Bool { hot && percent > chargeFloor }
+
     public static func clamp(_ v: Int) -> Int { min(max(v, range.lowerBound), range.upperBound) }
 
     /// Turns typed text ("42", "42°", "42 °C") into a valid limit; nil when there is no number.

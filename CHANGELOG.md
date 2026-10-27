@@ -4,6 +4,23 @@
 BalDente stays on 0.x until: it is notarized, it has been tested on at least three Mac models and two macOS versions, it has had a week of daily use
 without a charging bug, and the helper installs, updates and uninstalls cleanly on a fresh account.
 
+## 0.16 (pre-release)
+- **Cooling down card:** while Heat Protection holds the charger, the Overview shows the last 30 minutes of battery temperature, whether it's falling, and about how long until charging resumes.
+- **Recent changes:** when the battery is over the heat limit but under 20%, BalDente now logs "Charging despite the heat" (and notifies unless Heat Protection notifications are muted) instead of charging silently. Needs the helper update.
+
+## 0.15 (pre-release)
+- **Fix:** Heat Protection no longer stops charging below 20%. The charger cut runs the Mac from its battery, so a long heat pause could drain it nearly flat while plugged in (it looked like a calibration that wouldn't stop). The Overview now says what it's waiting for.
+- **Pause calibration:** pause a running calibration and resume it later from the same step. Your normal limits apply while it's paused, and the 24-hour clock stops.
+- **Drain time estimate:** the Calibration card says how long draining to 15% will take at the current power use, before you start and while it runs.
+- **Calibrate overnight:** once a month, starts a calibration when you plug in between 10 PM and 5 AM. Cancelling it skips that night. Needs the helper update.
+
+## 0.14 (pre-release)
+- **Fix:** a calibration planned for tonight no longer starts a second calibration after one you started yourself has finished. Starting any calibration now uses up that plan and today's repeat, and a planned or repeating one is skipped if one finished in the last 20 hours.
+- **Fix:** cancelling a running calibration also cancels a leftover planned one, so it can't start again hours later.
+- **Fix:** calibration can no longer run forever: the charge step ends after 2 hours at 98-99% on batteries that never show 100%, and a calibration that hasn't finished after 24 hours stops by itself and tells you.
+- **Fix:** Start Calibration (⌘K, `baldente://calibrate`) no longer restarts a calibration that is already running.
+- Calibration progress now shows how long it has been running. Needs the helper update.
+
 ## 0.13 (pre-release)
 - **Shorter menu bar panel:** it now stops at 520 points instead of filling the screen height, and Settings, Dashboard and Quit stay pinned at the bottom.
 - **Obvious scrolling:** when more sections are below, the panel fades out at the bottom, shows the scroll bar and a **More** button that scrolls down for you.

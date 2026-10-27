@@ -100,6 +100,7 @@ There's no Xcode project — everything goes through `swift build`/`swift test` 
 - `swift test` can fail to code-sign inside ~/Desktop (Finder xattrs). Use `swift test --scratch-path <dir outside Desktop>`.
 - Launching the debug binary from a shell crashes (Bluetooth TCC); wrap it in a throwaway .app with its own bundle id and start
   it with `open -n --env BALDENTE_TEST_CHARGING=1 …` (that env var forces the charging animation).
+- The adapter backends cut power, so any "pause" (heat, discharge) runs the Mac from the battery. Heat holds stop at `HeatLimit.chargeFloor` (20%); without that a warm Mac drained to 5% while plugged in.
 - The heat-limit range (30–60 °C) and default (35 °C) live in `BalDenteCore/HeatLimit.swift` and are shared with `baldented`; changing them means users must update the helper.
 - Zone names must be unique and not reserved ("Default", "Top Up", "Travel Mode", "manual"); use `Model.addZone()`, and the zone editor calls
   `Model.fixZoneName` on close. Tiles mark the active zone by `target.zoneID`, not by label.
@@ -115,6 +116,7 @@ There's no Xcode project — everything goes through `swift build`/`swift test` 
 
 - New fields on `Status`/`LimiterState` must be optional or custom-decoded: an old helper must not make a new app think the helper is offline, and the reverse.
 - Every new helper command parses fixed tokens with range checks (the socket buffer is 512 bytes); never decode JSON from the socket.
+- Calibration steps live in `CalibrationRun` (Core, tested); the daemon only calls `advance`. Every start goes through `startCalibration()`, which clears `calibrateAt` and marks today's repeat run, so a plan can't fire a second calibration after a manual one.
 - Scheduled tasks never set the limit (zones own it and the app re-sends it every refresh). The LED key is only written once the user picks a mode (`lastLED`).
 - `AppIntents` need Xcode's metadata step, which SwiftPM does not run, so Shortcuts works through `baldente://` and the CLI instead.
 

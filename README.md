@@ -108,10 +108,10 @@ four dots at the bottom are the volume.
   stay on your Mac, and you can turn it off or clear them in General. Answer straight from the notification (Accept / Not now).
 - **Zone suggestions:** notices a Wi-Fi network you join regularly that no zone has ("You're on “CafeNet” most Tue, Thu") and
   offers to add it to a zone or make a new one. Suggest only, on-device, last 4 weeks.
-- **Heat Protection:** pauses charging when the battery gets hot. Limit from 30 to 60 °C, default 35 °C, set with a thermometer
+- **Heat Protection:** pauses charging when the battery gets hot (never below 20%, so a hot day can't run it flat; Recent changes says when it charges anyway). While it holds, the Overview charts the temperature and estimates when charging resumes. Limit from 30 to 60 °C, default 35 °C, set with a thermometer
   you can drag, click, or type into (↑ ↓ ← →, ⇧ for 5), with presets.
 - **Discharge** to a chosen level with the charger plugged in.
-- **Calibration:** drain to 15%, charge to 100%, rest an hour. Run now, at a chosen time tonight, or repeat on days of the month. Shows live progress while it runs, notifies you when it finishes and remembers the last completed date, nudges you after 90 days without one and marks each on the History chart.
+- **Calibration:** drain to 15%, charge to 100%, rest an hour. Run now, at a chosen time tonight, or repeat on days of the month. Pause and resume it, turn on **Calibrate overnight** (once a month, when you plug in at night), and see how long the drain will take. Shows live progress and how long it has been running, stops by itself if it can't finish within 24 hours, never runs twice in one night, notifies you when it finishes and remembers the last completed date, nudges you after 90 days without one and marks each on the History chart.
 - **Low Power Mode** switch.
 
 **Menu bar and Dock icon**

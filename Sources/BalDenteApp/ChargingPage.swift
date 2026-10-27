@@ -53,6 +53,12 @@ struct ChargingPage: View {
                 if let t = task, let progress = CalibrationProgress.text(t, percent: model.percent) {
                     Label(progress, systemImage: "gauge.with.dots.needle.50percent")
                         .font(.system(.subheadline, design: .rounded).weight(.semibold)).foregroundStyle(.purple)
+                    if t.phase == "discharge", t.pausedAt == nil, let est = model.drainEstimate {
+                        Text("Draining to 15% takes \(est) at the current power use.").font(.caption).foregroundStyle(.secondary)
+                    }
+                    if let e = CalibrationProgress.elapsedText(t) {
+                        Text(e).font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+                    }
                     if t.phase != "discharge", model.onBattery {
                         Label("Unplugged: plug the charger back in to continue.", systemImage: "bolt.slash.fill")
                             .font(.caption.weight(.semibold)).foregroundStyle(.orange)
@@ -81,6 +87,14 @@ struct ChargingPage: View {
                             .disabled(task != nil || status == nil)
                     }
                 }
+                if task == nil, let est = model.drainEstimate, model.percent > CalibrationProgress.drainTarget {
+                    Label("Draining from \(model.percent)% would take \(est) at the current power use.", systemImage: "hourglass")
+                        .font(.caption).foregroundStyle(.secondary)
+                }
+                Toggle("Calibrate overnight", isOn: Binding(get: { model.config.overnightCalibration ?? false },
+                       set: { model.config.overnightCalibration = $0 })).toggleStyle(.switch).settingAnchor("Calibrate overnight")
+                Text("Once a month, starts when you plug in between 10 PM and 5 AM. Cancelling it skips that night.")
+                    .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
                 if task == nil, let last = CalibrationProgress.lastText(model.lastCalibration) {
                     Label(last, systemImage: "checkmark.circle").font(.caption).foregroundStyle(.secondary)
                 }
@@ -91,6 +105,11 @@ struct ChargingPage: View {
                 HStack {
                     if task?.kind == "calibrate" {
                         Button { model.cmd("cancel") } label: { pill("Cancel", "xmark") }.buttonStyle(.glass)
+                        if task?.pausedAt != nil {
+                            Button { model.cmd("calibrate resume") } label: { pill("Resume", "play.fill") }.buttonStyle(.glass)
+                        } else {
+                            Button { model.cmd("calibrate pause") } label: { pill("Pause", "pause.fill") }.buttonStyle(.glass)
+                        }
                     } else if s?.calibrateAt != nil {
                         Button { model.cmd("calibrate off") } label: { pill("Cancel", "xmark") }.buttonStyle(.glass)
                     } else {

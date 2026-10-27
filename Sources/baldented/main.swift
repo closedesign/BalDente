@@ -29,8 +29,11 @@ var batteryHot = false
 /// Fixed Gregorian POSIX format, so the "already ran today" check can't drift with the system calendar or locale.
 func today() -> String { dayString(Date()) }
 
+/// Starting one, by any route, fulfils a pending one-off plan and today's repeat, so neither runs a second calibration afterwards.
 func startCalibration() {
-    state.task = TaskState(); state.task.kind = "calibrate"; state.task.phase = "discharge"
+    state.task = CalibrationRun.start()
+    state.calibrateAt = nil
+    state.schedule.lastRun = today()
     print("calibration started")
 }
 
@@ -135,6 +138,7 @@ func perform(_ t: ScheduledTask, _ pct: Int) -> String {
         return "Started"
     case .calibrate:
         guard !state.task.active else { return "Skipped: another task is running" }
+        guard !CalibrationRun.ranRecently(state.lastCalibrated) else { return "Skipped: calibrated recently" }
         startCalibration(); return "Started"
     }
 }
@@ -162,10 +166,13 @@ func checkSchedule(_ pct: Int) {
     checkReadyBy(pct)
     if let at = state.calibrateAt {
         if Date() > at.addingTimeInterval(3 * 3600) { state.calibrateAt = nil; saveState() }   // missed by hours: don't start at noon
-        else if Date() >= at, !state.task.active { state.calibrateAt = nil; startCalibration(); saveState(); return }
+        else if Date() >= at, state.task.kind == "calibrate" || CalibrationRun.ranRecently(state.lastCalibrated) {
+            state.calibrateAt = nil; saveState(); print("planned calibration skipped: one is running or just ran")
+        }
+        else if Date() >= at, !state.task.active { startCalibration(); saveState(); return }
     }
     let s = state.schedule
-    guard s.enabled, !state.task.active, s.lastRun != today() else { return }
+    guard s.enabled, !state.task.active, s.lastRun != today(), !CalibrationRun.ranRecently(state.lastCalibrated) else { return }
     let c = Calendar.current, now = Date()
     let dim = c.range(of: .day, in: .month, for: now)?.count ?? 31
     guard scheduleDayMatches(days: s.days, today: c.component(.day, from: now), daysInMonth: dim) else { return }
@@ -194,17 +201,15 @@ func advanceTask(_ pct: Int) -> Bool? {
         if pct <= t.target - 2 { return true }     // ...and topping it back up
         return curAdapterOn
     case "calibrate":
-        switch t.phase {
-        case "discharge":
-            if pct <= 15 { t.phase = "charge"; return true }
-            return false
-        case "charge":
-            if pct >= 100 { t.phase = "rest"; t.restUntil = Date().addingTimeInterval(3600) }
-            return true
-        default:
-            if let until = t.restUntil, Date() >= until { t = TaskState(); print("calibration finished"); return nil }
-            return true
+        let r = CalibrationRun.advance(t, percent: pct)
+        if r.task.phase != t.phase, r.task.active { print("calibration: \(r.task.phase) at \(pct)%") }
+        t = r.task
+        switch r.outcome {
+        case .finished: state.lastCalibrated = Date(); print("calibration finished")
+        case .timedOut: print("calibration gave up after \(Int(CalibrationRun.maxDuration / 3600)) h at \(pct)%")
+        case .running: break
         }
+        return r.adapterOn
     default: return nil
     }
 }
@@ -231,7 +236,7 @@ func apply() {
         want = task
         heatHold = false        // tasks have their own (45 °C) cutoff below; heat protection isn't what's holding the charger
     } else {
-        heatHold = batteryHot
+        heatHold = HeatLimit.shouldHold(hot: batteryHot, percent: pct)   // never run a low battery flat to cool it
         if heatHold { want = false }
         else if !state.enabled { want = true }
         else if pct >= state.upper { want = false }
@@ -239,7 +244,7 @@ func apply() {
         else { want = adapterOn }   // inside the sailing range: leave things as they are
     }
     if state.task.kind == "topup", let t = temp, t >= Double(HeatLimit.ratedChargeMax) { want = false }   // too hot even for a top up
-    holdAwake(state.task.kind == "calibrate" || startingSoon || (state.stayAwake && plugged && want && state.enabled && pct < state.upper))   // a topup keeps charging while asleep; calibration needs the Mac awake
+    holdAwake((state.task.kind == "calibrate" && state.task.pausedAt == nil) || startingSoon || (state.stayAwake && plugged && want && state.enabled && pct < state.upper))   // a topup keeps charging while asleep; calibration needs the Mac awake
     if pct <= 5 { want = true }     // never strand the battery
     updateLED(plugged: plugged, holding: !want && !heatHold)
     if want != adapterOn {
@@ -260,7 +265,8 @@ func handle(_ line: String) -> String {
     switch p.first {
     case "status":
         let s = Status(percent: batteryPercent() ?? -1, adapterOn: backend.isAdapterOn(), state: state,
-                       backend: backend.name, tempC: BatteryInfo.read()?.tempC, heatHold: heatHold, ledAvailable: ledAvailable)
+                       backend: backend.name, tempC: BatteryInfo.read()?.tempC, heatHold: heatHold, ledAvailable: ledAvailable,
+                       heatSkipped: state.heatProtection && batteryHot && !heatHold && !state.task.active)
         return String(decoding: (try? JSONEncoder().encode(s)) ?? Data(), as: UTF8.self)
     case "limit":
         guard p.count >= 3, let u = Int(p[1]), let l = Int(p[2]), (5...100).contains(u), (1..<u).contains(l)
@@ -286,6 +292,11 @@ func handle(_ line: String) -> String {
                   let when = nextOccurrence(hour: h, minute: m, after: Date()) else { return "error: usage calibrate at HH:MM" }
             state.calibrateAt = when
         } else if p.count == 2, p[1] == "off" { state.calibrateAt = nil }
+        else if p.count == 2, p[1] == "pause" || p[1] == "resume" {
+            guard state.task.kind == "calibrate" else { return "error: no calibration is running" }
+            state.task = p[1] == "pause" ? CalibrationRun.pause(state.task) : CalibrationRun.resume(state.task)
+        }
+        else if state.task.kind == "calibrate" { return "error: a calibration is already running" }
         else { startCalibration() }
     case "ready":
         if p.count == 2, p[1] == "off" {
@@ -310,7 +321,9 @@ func handle(_ line: String) -> String {
         } else if p.count == 3, p[1] == "travel", let m = Int(p[2]) {
             state.chargeSchedule.travelMinutes = LeaveTime.clampTravel(m)
         } else { return "error: usage ready off | ready zone <name|any> | ready travel <minutes> | ready on <weekday@HH:MM[@percent],...>" }
-    case "cancel": state.task = TaskState()
+    case "cancel":
+        if state.task.kind == "calibrate" { state.calibrateAt = nil; print("calibration cancelled") }   // a leftover plan must not start another one later
+        state.task = TaskState()
     case "sleepstop", "stayawake":
         guard p.count == 2, ["on", "off"].contains(p[1]) else { return "error: usage \(p[0]) on|off" }
         if p[0] == "sleepstop" { state.stopWhenSleeping = p[1] == "on" } else { state.stayAwake = p[1] == "on" }

@@ -73,6 +73,8 @@ public struct Config: Codable, Equatable {
     public var appearance: Appearance?
     /// Start a discharge on its own when the limit drops below the battery. Optional so older config files still decode.
     public var autoDischarge: Bool?
+    /// Start a calibration the next time the Mac is plugged in at night, once a month. Optional so older config files still decode.
+    public var overnightCalibration: Bool?
 
     public init() {
         zones = [
@@ -92,6 +94,7 @@ public struct Config: Codable, Equatable {
         overrideZone = try c.decodeIfPresent(String.self, forKey: .overrideZone)
         appearance = try c.decodeIfPresent(Appearance.self, forKey: .appearance)
         autoDischarge = try c.decodeIfPresent(Bool.self, forKey: .autoDischarge)
+        overnightCalibration = try c.decodeIfPresent(Bool.self, forKey: .overnightCalibration)
     }
 
     /// Makes imported or hand-edited limits something the helper accepts (it rejects upper outside 5...100 or lower >= upper),

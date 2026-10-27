@@ -12,6 +12,7 @@ struct OverviewPage: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 30) {
             hero
+            if model.status?.heatHold == true { coolingCard }
             if let p = model.readyPreview { leavingCard(p) }
             if let h = model.holdHintText { holdHint(h) }
             if let sug = model.habitSuggestion { habitCard(sug) }
@@ -106,6 +107,24 @@ struct OverviewPage: View {
         .padding(.leading, 18).padding(.trailing, 10).padding(.vertical, 10)
         .glassEffect(.regular.tint(model.accent.opacity(0.18)), in: .rect(cornerRadius: 22))
         .settingAnchor("Holding hint")
+    }
+
+    /// While a heat hold is on: the last 30 minutes of battery temperature, the resume line, and when it should get there.
+    private var coolingCard: some View {
+        let resume = (model.status?.state.heatLimit ?? HeatLimit.defaultLimit) - 3
+        return HStack(spacing: 14) {
+            Image(systemName: "thermometer.medium").foregroundStyle(.orange)
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Cooling down").font(.system(.headline, design: .rounded))
+                Text(model.tempTrend.summary(resumeAt: resume)).font(.callout).foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            Spacer(minLength: 8)
+            TempSparkline(samples: model.tempTrend.samples, line: Double(resume)).frame(width: 130, height: 44)
+        }
+        .padding(.horizontal, 18).padding(.vertical, 12)
+        .glassEffect(.regular.tint(Color.orange.opacity(0.18)), in: .rect(cornerRadius: 22))
+        .settingAnchor("Cooling down")
     }
 
     /// What the next scheduled departure will do, so a blocked or unpowered Ready by shows before it fails.
@@ -408,5 +427,32 @@ struct NetworkSuggestionView: View {
             .padding(18).frame(maxWidth: .infinity, alignment: .leading)
             .glassEffect(.regular.tint(.blue.opacity(0.14)), in: .rect(cornerRadius: 24))
         }
+    }
+}
+
+/// A static temperature line with a dashed "charging resumes" mark. Redrawn only when a sample arrives (every 20 s).
+private struct TempSparkline: View {
+    let samples: [TempTrend.Sample]
+    let line: Double
+
+    var body: some View {
+        GeometryReader { g in
+            let temps = samples.map(\.celsius) + [line]
+            let lo = (temps.min() ?? line) - 0.3, hi = (temps.max() ?? line) + 0.3
+            let t0 = samples.first?.date ?? Date(), span = max(60, samples.last.map { $0.date.timeIntervalSince(t0) } ?? 60)
+            let y = { (c: Double) in g.size.height * (1 - (c - lo) / (hi - lo)) }
+            ZStack {
+                Path { p in p.move(to: CGPoint(x: 0, y: y(line))); p.addLine(to: CGPoint(x: g.size.width, y: y(line))) }
+                    .stroke(Color.primary.opacity(0.35), style: StrokeStyle(lineWidth: 1, dash: [3, 3]))
+                Path { p in
+                    for (i, s) in samples.enumerated() {
+                        let pt = CGPoint(x: g.size.width * s.date.timeIntervalSince(t0) / span, y: y(s.celsius))
+                        if i == 0 { p.move(to: pt) } else { p.addLine(to: pt) }
+                    }
+                }
+                .stroke(Color.orange, style: StrokeStyle(lineWidth: 2, lineCap: .round, lineJoin: .round))
+            }
+        }
+        .accessibilityLabel("Battery temperature over the last 30 minutes")
     }
 }

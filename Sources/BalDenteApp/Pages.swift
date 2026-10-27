@@ -103,6 +103,7 @@ enum SettingsIndex {
             i("Low Power Mode", "Ask macOS to reduce power use.", ["energy", "save power", "efficiency"], .charging),
             i("Stop charging when sleeping", "Cut the charger as the Mac sleeps so it can't charge past the limit.", ["sleep", "lid", "overnight", "close"], .charging),
             i("Stay awake until the limit", "Keep the Mac awake only while it charges toward the limit.", ["sleep", "lid closed", "clamshell", "disable sleep"], .charging),
+            i("Calibrate overnight", "Once a month, calibrate when you plug in at night.", ["overnight", "night", "monthly", "automatic calibration"], .charging),
             i("Automatic Discharge", "Drain to the limit on its own when it drops below the battery.", ["auto discharge", "drain", "lower limit"], .charging),
             i("MagSafe LED", "Green at the limit, orange while charging.", ["light", "green", "orange", "led", "indicator"], .charging),
             i("Schedule", "Run Top Up, Discharge, Calibration or Low Power Mode on a schedule.", ["task", "repeat", "daily", "weekly", "monthly", "automation", "catch up", "history"], .charging),

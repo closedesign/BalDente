@@ -58,8 +58,15 @@ final class Model: NSObject, ObservableObject, CLLocationManagerDelegate, UNUser
     private var lastLabel: String?
     private var lastZoneID: UUID?
     private var lastHeatHold = false
+    private var lastHeatSkipped = false
+    /// The last 30 minutes of battery temperature, drawn on the Overview while a heat hold is on.
+    @Published private(set) var tempTrend = TempTrend()
     private var lastSkipKey: String?
     private var lastAutoDischarge: Date?
+    private var lastOvernightCalibration: Date? {
+        get { UserDefaults.standard.object(forKey: "overnightCalibrationAttempt") as? Date }
+        set { UserDefaults.standard.set(newValue, forKey: "overnightCalibrationAttempt") }
+    }
     private var lastTask: TaskState?
     /// When a calibration last ran its full course (not cancelled). Nil until one finishes with this version.
     @Published private(set) var calibrationDates: [Date] = {
@@ -407,6 +414,7 @@ final class Model: NSObject, ObservableObject, CLLocationManagerDelegate, UNUser
         target = t
         recordWear(t)
         maybeAutoDischarge(t)
+        maybeOvernightCalibration()
         let label = t.wireLabel
         let needsSend = status.map { t != lastSent || $0.state.upper != t.upper || $0.state.lower != t.lower || $0.state.label != label } ?? false
         guard needsSend else { finishRefresh(); return }
@@ -531,6 +539,11 @@ final class Model: NSObject, ObservableObject, CLLocationManagerDelegate, UNUser
             announce(.heat(on: h, limit: status?.state.heatLimit ?? HeatLimit.defaultLimit))
             lastHeatHold = h
         }
+        // Too low to hold for heat: say once that it is charging anyway, until it cools or climbs back over the floor.
+        let skipped = status?.heatSkipped == true
+        if skipped, !lastHeatSkipped { announce(.heatSkipped(percent: percent, limit: status?.state.heatLimit ?? HeatLimit.defaultLimit)) }
+        lastHeatSkipped = skipped
+        if let c = status?.tempC { tempTrend.add(c) }
         // A zone-limited Ready by silently skips when another limit is active. Say so once per departure (checked on the 20 s refresh).
         if let st = status?.state, let skip = ReadySkip.check(st.chargeSchedule, activeLabel: target.wireLabel, percent: percent,
                                                               taskActive: st.task.active, now: Date()), skip.key != lastSkipKey {
@@ -622,7 +635,7 @@ final class Model: NSObject, ObservableObject, CLLocationManagerDelegate, UNUser
                 calibrationDates = Array((calibrationDates + [Date()]).suffix(50))
                 UserDefaults.standard.set(calibrationDates, forKey: "calibrationDates")
             }
-            announce(.calibrationEnded(completed: done))
+            announce(.calibrationEnded(completed: done, timedOut: CalibrationProgress.timedOut(was)))
         }
         else if was.active { announce(.task(started: false, kind: was.kind, target: was.target)) }
         if now.kind == "topup" { announce(.readyByStarted(percent: now.target, by: now.restUntil?.addingTimeInterval(-30 * 60), calendar: calendar.enabled)) }
@@ -1061,7 +1074,7 @@ final class Model: NSObject, ObservableObject, CLLocationManagerDelegate, UNUser
         case .topUp(let on): if topUp != on { toggleTopUp() }
         case .travel(let on): travelUntil = on ? Date().addingTimeInterval(86400) : nil
         case .discharge(let t): cmd("discharge \(t)")
-        case .calibrate: cmd("calibrate")
+        case .calibrate: if task?.kind != "calibrate" { cmd("calibrate") }
         case .lowPower(let on): cmd("lowpower \(on ? "on" : "off")")
         case .automatic: config.overrideZone = nil
         case .cancelTask: cmd("cancel")
@@ -1069,6 +1082,23 @@ final class Model: NSObject, ObservableObject, CLLocationManagerDelegate, UNUser
     }
 
     /// Auto Discharge: when the limit sits below the battery with the charger in, drain to it (at most once every five minutes).
+    /// "Calibrate overnight": once a month, start a calibration when the Mac is plugged in at night. One try per night, so Cancel sticks.
+    private func maybeOvernightCalibration() {
+        guard let st = status?.state,
+              CalibrationPlan.overnightShouldStart(enabled: config.overnightCalibration == true, plugged: system.power.plugged,
+                                                   taskActive: st.task.active, lastCalibrated: [lastCalibration, st.lastCalibrated].compactMap { $0 }.max(),
+                                                   lastAttempt: lastOvernightCalibration) else { return }
+        lastOvernightCalibration = Date()
+        cmd("calibrate")
+    }
+
+    /// How long the drain step would take at the current power use, e.g. "about 4 h"; nil when it can't tell.
+    var drainEstimate: String? {
+        guard let i = info else { return nil }
+        let w = i.flow.map { $0.toMac } ?? abs(i.watts)
+        return CalibrationPlan.drainHours(percent: percent, maxMAh: i.maxMAh, volts: i.volts, watts: w).map(CalibrationPlan.durationText)
+    }
+
     private func maybeAutoDischarge(_ t: Target) {
         guard config.autoDischarge == true, let st = status?.state,
               lastAutoDischarge.map({ Date().timeIntervalSince($0) > 300 }) ?? true,
@@ -1084,6 +1114,7 @@ final class Model: NSObject, ObservableObject, CLLocationManagerDelegate, UNUser
         if let t = task {
             if t.kind == "topup" { return t.phase == "hold" ? "Ready to go" : "Charging for your trip" }
             if t.kind == "discharge" { return "Discharging to \(t.target)%" }
+            if t.pausedAt != nil { return "Calibration paused" }
             switch t.phase { case "discharge": return "Calibrating: draining"; case "charge": return "Calibrating: charging"; default: return "Calibrating: resting" }
         }
         if s.heatHold { return "Cooling down" }
@@ -1096,9 +1127,12 @@ final class Model: NSObject, ObservableObject, CLLocationManagerDelegate, UNUser
         if let t = task {
             if t.kind == "topup" { return "Ready by is active, so zone limits are paused until you leave." }
             if t.kind == "discharge" { return "Charger is off until the battery reaches \(t.target)%." }
+            if t.pausedAt != nil { return "Your normal limits apply until you resume it on Charging Tools." }
             return "Full cycle: 15%, then 100%, then a one-hour rest."
         }
-        if status?.heatHold == true { return "Charging is paused until the battery cools down." }
+        if status?.heatHold == true {
+            return "The charger is off until the battery cools 3 °C below \(status?.state.heatLimit ?? HeatLimit.defaultLimit) °C. Below \(HeatLimit.chargeFloor)% it charges anyway."
+        }
         if onBattery { return "Plug in and BalDente charges to \(target.upper)%, then holds." }
         return holding ? "Charger paused. It comes back at \(target.lower)%."
                        : "Charger pauses when the battery reaches \(target.upper)%."
