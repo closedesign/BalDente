@@ -4,6 +4,10 @@
 BalDente stays on 0.x until: it is notarized, it has been tested on at least three Mac models and two macOS versions, it has had a week of daily use
 without a charging bug, and the helper installs, updates and uninstalls cleanly on a fresh account.
 
+## 0.17 (pre-release)
+- **Power source like macOS:** when the Mac is plugged in but no longer charging (BalDente's limit or macOS's own Charge Limit), the headline and ring now say "Using AC power" instead of "Charging to 80%". The panel's Battery section shows "Power source: Power Adapter" (with watts) or "Battery", like the macOS battery menu.
+- **Fix:** the status/ring caption ("Plugged in", "On battery") was too big for the small menu bar ring and overlapped it; it now uses a short caption ("AC power", "Battery") at a smaller size.
+
 ## 0.16 (pre-release)
 - **Cooling down card:** while Heat Protection holds the charger, the Overview shows the last 30 minutes of battery temperature, whether it's falling, and about how long until charging resumes.
 - **Recent changes:** when the battery is over the heat limit but under 20%, BalDente now logs "Charging despite the heat" (and notifies unless Heat Protection notifications are muted) instead of charging silently. Needs the helper update.

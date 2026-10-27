@@ -44,8 +44,8 @@ struct BatteryRing: View {
                 }
                 Label(drag.map { $0.handle == .upper ? "Stop charging at" : "Resume at" } ?? caption.text,
                       systemImage: drag.map { $0.handle == .upper ? "bolt.slash.fill" : "bolt.fill" } ?? caption.icon)
-                    // The small panel ring (96 pt) made this 4.8 pt, unreadable; never go below 11.5 pt.
-                    .font(.system(size: max(size * 0.05, 11.5), weight: .semibold, design: .rounded)).imageScale(.large)
+                    // The small panel ring (96 pt) made this 4.8 pt, unreadable; never go below 10 pt there (11.5 pt on big rings) and use the short caption so it fits inside the ring.
+                    .font(.system(size: max(size * 0.05, size < 140 ? 10 : 11.5), weight: .semibold, design: .rounded)).imageScale(size < 140 ? .medium : .large)
                     .lineLimit(1).minimumScaleFactor(0.7)
                     .foregroundStyle(.secondary).labelStyle(.titleAndIcon)
             }

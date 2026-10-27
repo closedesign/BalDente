@@ -26,7 +26,7 @@ struct CompactView: View {
             Section {
                 HStack(spacing: 14) {
                     BatteryRing(percent: model.percent, lower: model.target.lower, upper: model.target.upper,
-                                caption: model.ringCaption, tint: model.accent, size: 92)
+                                caption: model.ringCaption(compact: true), tint: model.accent, size: 92)
                     VStack(alignment: .leading, spacing: 3) {
                         Text(model.headline).font(.title3.weight(.semibold))
                         Text(model.subline).font(.callout).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)

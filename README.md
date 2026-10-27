@@ -59,7 +59,7 @@ A **zone** is a charge limit that switches on by itself, based on where you are:
   stops wearing the battery. Add your home Wi-Fi to the **Home** zone and it happens automatically. The other starter zones are
   **School** (80%), **Travel** (100%), and **Everywhere else** (80%) for anywhere that matches no zone.
 - **The first-run tour shows these defaults up front** and offers a simpler **80% everywhere** instead. While charging is held
-  below 100%, Overview and the menu bar panel say why ("Holding at 50% (Home zone)") with one-click Top Up and Ready by.
+  below 100%, Overview and the menu bar panel say why ("Holding at 50% (Home zone)") with one-click Top Up and Ready by. Plugged in but not charging, it says "Using AC power" and the panel shows the power source (Power Adapter or Battery) like the macOS battery menu.
 - **Every zone switch is announced** with its reason (for example "connected to HomeNet" or "you pinned it").
 - Pin any zone by hand, or tap **Automatic** to let Wi-Fi and location decide again.
 - Create as many zones as you like, rename them, and back them up with **Export settings**.

@@ -1051,13 +1051,16 @@ final class Model: NSObject, ObservableObject, CLLocationManagerDelegate, UNUser
         return !holding || status?.backend.contains("CHIE") == true
     }
 
-    /// The small caption inside the battery rings.
-    var ringCaption: (text: String, icon: String) {
-        if onBattery { return ("On battery", "battery.75percent") }
-        if holding { return ("Holding", "pause.fill") }
-        if system.power.charging { return ("Charging", "bolt.fill") }
-        if system.power.plugged { return ("Plugged in", "powerplug.fill") }
-        return ("Not charging", "battery.75percent")
+    /// Where power comes from now (adapter or battery), including a Mac that is plugged in but no longer charging.
+    var powerSource: PowerSourceState {
+        PowerSourceState(onBattery: onBattery, charging: system.power.charging, charged: system.power.charged, held: holding,
+                         percent: percent, upper: target.upper)
+    }
+
+    /// The small caption inside the battery rings; `compact` for the small rings, which have about 80 pt of room.
+    func ringCaption(compact: Bool = false) -> (text: String, icon: String) {
+        if !system.power.present { return ("Not charging", "battery.75percent") }
+        return powerSource.caption(compact: compact)
     }
 
     /// What the next Ready by departure within a day will do; nil when there is nothing to say.
@@ -1118,8 +1121,7 @@ final class Model: NSObject, ObservableObject, CLLocationManagerDelegate, UNUser
             switch t.phase { case "discharge": return "Calibrating: draining"; case "charge": return "Calibrating: charging"; default: return "Calibrating: resting" }
         }
         if s.heatHold { return "Cooling down" }
-        if onBattery { return "On battery" }
-        return s.adapterOn ? "Charging to \(target.upper)%" : "Holding at \(percent)%"
+        return powerSource.headline(upper: target.upper, percent: percent)
     }
 
     var subline: String {
@@ -1134,8 +1136,9 @@ final class Model: NSObject, ObservableObject, CLLocationManagerDelegate, UNUser
             return "The charger is off until the battery cools 3 °C below \(status?.state.heatLimit ?? HeatLimit.defaultLimit) °C. Below \(HeatLimit.chargeFloor)% it charges anyway."
         }
         if onBattery { return "Plug in and BalDente charges to \(target.upper)%, then holds." }
-        return holding ? "Charger paused. It comes back at \(target.lower)%."
-                       : "Charger pauses when the battery reaches \(target.upper)%."
+        if holding { return "Charger paused. It comes back at \(target.lower)%." }
+        if powerSource.phase == .charging { return "Charger pauses when the battery reaches \(target.upper)%." }
+        return "Running from the power adapter, so the battery isn't being used. Charging resumes at \(target.lower)%."
     }
 
     /// "Tue, Thu 11:00 to 100% · Wed 16:00 to 90%": days sharing a time and level are grouped.

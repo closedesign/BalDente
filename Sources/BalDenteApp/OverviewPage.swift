@@ -51,7 +51,7 @@ struct OverviewPage: View {
 
     private func heroLayout(horizontal: Bool) -> some View {
         let ring = BatteryRing(percent: model.percent, lower: model.target.lower, upper: model.target.upper,
-                               caption: model.ringCaption, tint: model.accent, size: horizontal ? 250 : 200,
+                               caption: model.ringCaption(), tint: model.accent, size: horizontal ? 250 : 200,
                                onLimitsChange: model.ringEditable ? { model.setTargetLimits(upper: $0, lower: $1) } : nil)
         return AnyLayout(horizontal ? AnyLayout(HStackLayout(spacing: 40)) : AnyLayout(VStackLayout(alignment: .leading, spacing: 20))) {
             ring.id("Charge ring").tourAnchor("Charge ring")

@@ -109,7 +109,7 @@ struct ChargingHeader: View {
         VStack(spacing: 10) {
             HStack(spacing: 14) {
                 BatteryRing(percent: model.status?.percent ?? model.system.power.percent, lower: model.target.lower, upper: model.target.upper,
-                            caption: model.ringCaption, tint: model.accent, size: 96)
+                            caption: model.ringCaption(compact: true), tint: model.accent, size: 96)
                 VStack(alignment: .leading, spacing: 3) {
                     Text(model.target.label).font(.system(size: 20, weight: .bold, design: .rounded))
                     Text(model.status == nil ? "Helper not running" : "Stop \(model.target.upper)% · resume \(model.target.lower)%")
@@ -270,7 +270,7 @@ struct BatterySection: View {
         let p = system.power
         guard p.present else { return "No battery" }
         if p.charging { return p.minutesToFull.map { "Charging · about \(minutes($0)) to full" } ?? "Charging · calculating time to full" }
-        if p.plugged { return p.charged ? "Fully charged" : model.holding ? "Connected · held by BalDente" : "Connected to power" }
+        if p.plugged { return p.charged ? "Fully charged" : model.holding ? "Using AC power · held by BalDente" : "Using AC power · not charging" }
         let left = p.minutesToEmpty.map { " · \(minutes($0)) left" } ?? ""
         return (p.lowPower ? "Low Power Mode" : "On battery") + left
     }
@@ -285,6 +285,7 @@ struct BatterySection: View {
             if details {
                 let i = model.info
                 DetailRows(rows: [
+                    ("Power source", system.power.plugged ? "Power Adapter" + (system.power.adapterWatts.map { " · \($0) W" } ?? "") : "Battery"),
                     ("Health", i?.healthPercent.map { "\($0)%" } ?? "–"),
                     ("Cycle count", i.map { "\($0.cycles)" } ?? "–"),
                     ("Temperature", (model.status?.tempC ?? i?.tempC).map { String(format: "%.1f °C", $0) } ?? "–"),
