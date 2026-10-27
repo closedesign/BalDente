@@ -18,6 +18,12 @@ public enum RingDrag {
         return min(100, max(0, p))
     }
 
+    /// Dragged values land on multiples of this, like the zone editor's sliders.
+    public static let step = 5
+
+    /// `p` rounded to the nearest multiple of `step`.
+    public static func snap(_ p: Int, step: Int = RingDrag.step) -> Int { Int((Double(p) / Double(step)).rounded()) * step }
+
     /// The marker the drag grabbed: the one nearest the touched percent. When they sit together, picking the side the
     /// touch is on keeps both reachable (above grabs the limit, below grabs the resume point).
     public static func handle(at p: Int, upper: Int, lower: Int) -> Handle {
@@ -42,14 +48,14 @@ public enum RingDrag {
 
     /// New (upper, lower) after moving one marker to `p`. The other marker is pushed along so resume stays below the limit,
     /// like the zone editor's sliders.
-    public static func move(_ h: Handle, to p: Int, upper: Int, lower: Int) -> (upper: Int, lower: Int) {
+    public static func move(_ h: Handle, to p: Int, upper: Int, lower: Int, gap: Int = 1) -> (upper: Int, lower: Int) {
         switch h {
         case .upper:
             let u = min(upperRange.upperBound, max(upperRange.lowerBound, p))
-            return (u, min(lower, u - 1))
+            return (u, min(lower, u - gap))
         case .lower:
             let l = min(lowerRange.upperBound, max(lowerRange.lowerBound, p))
-            return (max(upper, l + 1), l)
+            return (max(upper, l + gap), l)
         }
     }
 }

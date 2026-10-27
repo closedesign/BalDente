@@ -17,6 +17,12 @@ public struct Zone: Codable, Identifiable, Equatable {
     public var networks: [String]
     public var upper: Int
     public var lower: Int
+    /// A copy whose resume level is the one that is enforced, for showing on tiles.
+    public func showing(sailing: Bool) -> Zone {
+        var z = self
+        z.lower = ResumeLevel.effective(upper: upper, lower: lower, sailing: sailing)
+        return z
+    }
     /// SF Symbol name; nil picks one from the zone name.
     public var icon: String?
     /// Optional map circle; used when no Wi-Fi network matches.
@@ -75,10 +81,15 @@ public struct Config: Codable, Equatable {
     public var autoDischarge: Bool?
     /// Start a calibration the next time the Mac is plugged in at night, once a month. Optional so older config files still decode.
     public var overnightCalibration: Bool?
+    /// Let the battery drift down between the limit and the resume level before charging again. Off by default: the app then
+    /// tells the helper to resume one point below the limit, so each charger cut is shallow. Optional so older config files still decode.
+    public var sailing: Bool?
+    /// The step (80, 85, 90 or 95) the user set as macOS's own charge limit, or nil if they don't use it. See `MacChargeLimit`.
+    public var macLimit: Int?
 
     public init() {
         zones = [
-            Zone(name: "Home", upper: 50, lower: 45),
+            Zone(name: "Home", upper: 80, lower: 75),
             Zone(name: "School", upper: 80, lower: 75),
             Zone(name: "Travel", upper: 100, lower: 95),
         ]
@@ -95,6 +106,8 @@ public struct Config: Codable, Equatable {
         appearance = try c.decodeIfPresent(Appearance.self, forKey: .appearance)
         autoDischarge = try c.decodeIfPresent(Bool.self, forKey: .autoDischarge)
         overnightCalibration = try c.decodeIfPresent(Bool.self, forKey: .overnightCalibration)
+        sailing = try c.decodeIfPresent(Bool.self, forKey: .sailing)
+        macLimit = try c.decodeIfPresent(Int.self, forKey: .macLimit)
     }
 
     /// Makes imported or hand-edited limits something the helper accepts (it rejects upper outside 5...100 or lower >= upper),
@@ -136,6 +149,11 @@ public struct Config: Codable, Equatable {
     }
 }
 
+/// The resume level the helper really enforces: the saved one with sailing on, one point under the limit with it off.
+public enum ResumeLevel {
+    public static func effective(upper: Int, lower: Int, sailing: Bool) -> Int { sailing ? lower : max(1, upper - 1) }
+}
+
 public struct Target: Equatable {
     public var label: String
     public var upper: Int
@@ -148,6 +166,15 @@ public struct Target: Equatable {
         self.label = label; self.upper = upper; self.lower = lower; self.zoneID = zoneID; self.reason = reason
     }
     init(_ z: Zone, reason: String) { self.init(label: z.name, upper: z.upper, lower: z.lower, zoneID: z.id, reason: reason) }
+
+    /// What the helper should enforce. With sailing off the resume level sits one point under the limit, so the adapter is only
+    /// cut for a point or so at a time (every cut runs the Mac from its battery). The zone keeps its own saved resume level.
+    public func sending(sailing: Bool) -> Target {
+        guard !sailing else { return self }
+        var t = self
+        t.lower = ResumeLevel.effective(upper: upper, lower: lower, sailing: false)
+        return t
+    }
 
     public static func == (a: Target, b: Target) -> Bool {
         a.label == b.label && a.upper == b.upper && a.lower == b.lower && a.zoneID == b.zoneID

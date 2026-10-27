@@ -37,6 +37,29 @@ struct ChargingPage: View {
                     model.cmd("heat \(s?.heatProtection ?? true ? "on" : "off") \($0)")
                 }
             }
+            card("macOS Charge Limit", "bolt.horizontal.fill", .green) {
+                Picker("macOS charge limit", selection: Binding(get: { model.config.macLimit ?? 0 }, set: { model.config.macLimit = $0 == 0 ? nil : $0 })) {
+                    Text("Not using").tag(0)
+                    ForEach(MacChargeLimit.steps, id: \.self) { Text("\($0)%").tag($0) }
+                }.settingAnchor("macOS charge limit")
+                Text(model.config.macLimit.map {
+                    "A zone set to \($0)% is left to macOS, which stops charging there and runs the Mac from the charger. BalDente only reminds you to change the macOS setting when a zone needs more than \($0)%. Set the same limit in System Settings > Battery first, or the battery will charge to 100%."
+                } ?? "macOS can hold the charge at 80, 85, 90 or 95% itself and run the Mac from the charger, which BalDente can't do. Set a limit in System Settings > Battery, pick the same step here, and zones at that limit are left to macOS. Zones below it still use BalDente.")
+                    .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+            }
+            card("Sailing", "sailboat", .teal) {
+                Toggle("Sailing", isOn: Binding(get: { model.sailing }, set: { model.config.sailing = $0 }))
+                    .toggleStyle(.switch).settingAnchor("Sailing")
+                Text(model.sailing
+                     ? "Charging resumes at each zone's own resume level, so the battery drifts down between the two numbers. This Mac can only pause charging by cutting the charger, so that drift runs it from the battery."
+                     : "Off: charging resumes one point under the limit, so the charger is only cut for a moment at a time.")
+                    .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+                Toggle("Keep charging while busy", isOn: Binding(get: { s?.loadGuard ?? true },
+                       set: { model.cmd("loadguard \($0 ? "on" : "off")") })).toggleStyle(.switch)
+                    .disabled(status == nil || model.helperOutdated).settingAnchor("Keep charging while busy")
+                Text("When the Mac is busy and the battery has only just reached its limit, the charger stays on for up to \(LoadGuard.maxOvershoot) more points, so a build or export doesn't run on the battery. Needs the latest helper.")
+                    .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+            }
             card("Discharge", "arrow.down.to.line", .blue) {
                 Text("Drain to \(Int(dischargeTarget))% with the charger plugged in.").font(.callout).foregroundStyle(.secondary)
                 Slider(value: $dischargeTarget, in: 10...90, step: 5)

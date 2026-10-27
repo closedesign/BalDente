@@ -153,6 +153,8 @@ public struct LimiterState: Codable, Equatable {
     /// Hold the Mac awake while it is charging toward the limit, so it reaches it before sleeping.
     public var stayAwake = false
     public var led = MagSafeLED.system
+    /// Keep the charger on for a point or two past the limit while the Mac is busy (`LoadGuard`).
+    public var loadGuard = true
     /// Colours for `MagSafeLED.custom`.
     public var ledAtLimit = LEDColor.green
     public var ledCharging = LEDColor.orange
@@ -181,6 +183,7 @@ public struct LimiterState: Codable, Equatable {
         stopWhenSleeping = try c.decodeIfPresent(Bool.self, forKey: .stopWhenSleeping) ?? false
         stayAwake = try c.decodeIfPresent(Bool.self, forKey: .stayAwake) ?? false
         led = try c.decodeIfPresent(MagSafeLED.self, forKey: .led) ?? .system
+        loadGuard = try c.decodeIfPresent(Bool.self, forKey: .loadGuard) ?? true
         ledAtLimit = try c.decodeIfPresent(LEDColor.self, forKey: .ledAtLimit) ?? .green
         ledCharging = try c.decodeIfPresent(LEDColor.self, forKey: .ledCharging) ?? .orange
         tasks = try c.decodeIfPresent([ScheduledTask].self, forKey: .tasks) ?? []
@@ -199,11 +202,14 @@ public struct Status: Codable {
     public var ledAvailable: Bool?
     /// True while the battery is over the heat limit but too low to hold (`HeatLimit.chargeFloor`). Nil from older helpers.
     public var heatSkipped: Bool?
+    /// Which of `ChargeKeys.watched` this Mac let the helper read. Nil from older helpers.
+    public var chargeKeys: [String]?
 
     public init(percent: Int, adapterOn: Bool, state: LimiterState, backend: String, tempC: Double? = nil, heatHold: Bool = false,
-                ledAvailable: Bool? = nil, heatSkipped: Bool? = nil) {
+                ledAvailable: Bool? = nil, heatSkipped: Bool? = nil, chargeKeys: [String]? = nil) {
         self.percent = percent; self.adapterOn = adapterOn; self.state = state; self.backend = backend
         self.tempC = tempC; self.heatHold = heatHold; self.ledAvailable = ledAvailable; self.heatSkipped = heatSkipped
+        self.chargeKeys = chargeKeys
     }
 
     // Tolerant like `LimiterState`: a helper that predates a field must not make the app think it's offline.
@@ -217,5 +223,6 @@ public struct Status: Codable {
         heatHold = try c.decodeIfPresent(Bool.self, forKey: .heatHold) ?? false
         ledAvailable = try c.decodeIfPresent(Bool.self, forKey: .ledAvailable)
         heatSkipped = try c.decodeIfPresent(Bool.self, forKey: .heatSkipped)
+        chargeKeys = try c.decodeIfPresent([String].self, forKey: .chargeKeys)
     }
 }

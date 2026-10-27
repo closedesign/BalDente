@@ -6,7 +6,7 @@ final class ZoneTests: XCTestCase {
         var c = Config()
         c.zones[0].networks = ["HomeWiFi"]
         XCTAssertEqual(resolveZone(c, networks: ["homewifi"]).label, "Home")
-        XCTAssertEqual(resolveZone(c, networks: ["homewifi"]).upper, 50)
+        XCTAssertEqual(resolveZone(c, networks: ["homewifi"]).upper, 80)
     }
     func testUnknownNetworkUsesDefault() {
         XCTAssertEqual(resolveZone(Config(), networks: ["Cafe"]).label, "Default")

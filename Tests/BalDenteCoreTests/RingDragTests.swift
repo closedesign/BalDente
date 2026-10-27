@@ -35,6 +35,17 @@ final class RingDragTests: XCTestCase {
         XCTAssertEqual(RingDrag.handle(start: 79, now: 79, upper: 80, lower: 60), .upper)
     }
 
+    func testSnapToFives() {
+        XCTAssertEqual([0, 2, 3, 77, 78, 82, 99, 100].map { RingDrag.snap($0) }, [0, 0, 5, 75, 80, 80, 100, 100])
+    }
+
+    func testMoveWithAFiveGapKeepsResumeOnTheFiveGrid() {
+        let a = RingDrag.move(.upper, to: 50, upper: 80, lower: 75, gap: 5)
+        XCTAssertEqual(a.upper, 50); XCTAssertEqual(a.lower, 45)
+        let b = RingDrag.move(.lower, to: 85, upper: 80, lower: 75, gap: 5)
+        XCTAssertEqual(b.upper, 90); XCTAssertEqual(b.lower, 85)
+    }
+
     func testMoveClampsAndPushes() {
         XCTAssertEqual(RingDrag.move(.upper, to: 90, upper: 80, lower: 75).upper, 90)
         XCTAssertEqual(RingDrag.move(.upper, to: 90, upper: 80, lower: 75).lower, 75)

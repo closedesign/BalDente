@@ -26,7 +26,7 @@ struct CompactView: View {
             Section {
                 HStack(spacing: 14) {
                     BatteryRing(percent: model.percent, lower: model.target.lower, upper: model.target.upper,
-                                caption: model.ringCaption, tint: model.accent, size: 92)
+                                caption: model.ringCaption, tint: model.accent, size: 92, showsResume: model.sailing)
                     VStack(alignment: .leading, spacing: 3) {
                         Text(model.headline).font(.title3.weight(.semibold))
                         Text(model.subline).font(.callout).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
@@ -76,7 +76,7 @@ struct CompactView: View {
                         Text(z.name)
                         if z.place != nil { Image(systemName: "location.fill").font(.caption2).foregroundStyle(.secondary) }
                         Spacer()
-                        Text("\(z.upper)% / \(z.lower)%").foregroundStyle(.secondary).monospacedDigit()
+                        Text("\(z.upper)% / \(ResumeLevel.effective(upper: z.upper, lower: z.lower, sailing: model.sailing))%").foregroundStyle(.secondary).monospacedDigit()
                         if model.target.zoneID == z.id { Image(systemName: "checkmark.circle.fill").foregroundStyle(model.accent) }
                         Button { sheet = .zone(z.id) } label: { Image(systemName: "slider.horizontal.3") }.buttonStyle(.borderless)
                     }

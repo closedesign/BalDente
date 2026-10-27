@@ -8,6 +8,8 @@ struct BatteryRing: View {
     let caption: (text: String, icon: String)
     let tint: Color
     var size: CGFloat = 340
+    /// Whether the faded resume marker and band are drawn (and draggable). Off when Sailing is off: resume then sits one point under the limit.
+    var showsResume = true
     /// When set, the limit and resume markers can be dragged; called once with (upper, lower) when the drag ends.
     var onLimitsChange: ((Int, Int) -> Void)? = nil
 
@@ -24,16 +26,18 @@ struct BatteryRing: View {
         ZStack {
             Circle().stroke(Color.primary.opacity(0.13), style: StrokeStyle(lineWidth: lw, lineCap: .round)).padding(lw / 2)
             // The band the battery sails in: between resume and the limit the charger stays off.
-            Circle().trim(from: CGFloat(shownLower) / 100, to: CGFloat(shownUpper) / 100)
-                .stroke(tint.opacity(drag != nil ? 0.28 : 0.14), style: StrokeStyle(lineWidth: lw, lineCap: .butt))
-                .rotationEffect(.degrees(-90)).padding(lw / 2)
+            if showsResume {
+                Circle().trim(from: CGFloat(shownLower) / 100, to: CGFloat(shownUpper) / 100)
+                    .stroke(tint.opacity(drag != nil ? 0.28 : 0.14), style: StrokeStyle(lineWidth: lw, lineCap: .butt))
+                    .rotationEffect(.degrees(-90)).padding(lw / 2)
+            }
             Circle().trim(from: 0, to: CGFloat(max(percent, 1)) / 100)
                 .stroke(AngularGradient(colors: [tint.opacity(0.5), tint, tint.opacity(0.85)], center: .center,
                                         startAngle: .degrees(0), endAngle: .degrees(Double(max(percent, 1)) * 3.6)),
                         style: StrokeStyle(lineWidth: lw, lineCap: .round))
                 .rotationEffect(.degrees(-90)).padding(lw / 2)
                 .shadow(color: tint.opacity(0.7), radius: size * 0.07)
-            marker(.lower, shownLower, opacity: 0.4)
+            if showsResume { marker(.lower, shownLower, opacity: 0.4) }
             marker(.upper, shownUpper, opacity: 0.95)
             VStack(spacing: size * 0.01) {
                 HStack(alignment: .firstTextBaseline, spacing: 2) {
@@ -55,10 +59,10 @@ struct BatteryRing: View {
         .gesture(dragGesture, isEnabled: onLimitsChange != nil)
         .animation(.smooth(duration: 0.9), value: percent)
         .accessibilityElement(children: .combine)
-        .accessibilityValue("Charge \(percent)%, limit \(upper)%, resumes at \(lower)%")
+        .accessibilityValue(showsResume ? "Charge \(percent)%, limit \(upper)%, resumes at \(lower)%" : "Charge \(percent)%, limit \(upper)%")
         .accessibilityAdjustableAction { dir in
             guard let onLimitsChange else { return }
-            let m = RingDrag.move(.upper, to: upper + (dir == .increment ? 5 : -5), upper: upper, lower: lower)
+            let m = RingDrag.move(.upper, to: upper + (dir == .increment ? 5 : -5), upper: upper, lower: lower, gap: RingDrag.step)
             onLimitsChange(m.upper, m.lower)
         }
     }
@@ -90,18 +94,18 @@ struct BatteryRing: View {
                         // Only a press on the ring's band near a marker grabs it; elsewhere the ring is just a picture.
                         let r = hypot(v.startLocation.x - c, v.startLocation.y - c)
                         let p = RingDrag.percent(dx: v.startLocation.x - c, dy: v.startLocation.y - c, previous: 50)  // 50: no wrap clamp
-                        let near = min(RingDrag.distance(p, upper), RingDrag.distance(p, lower))
+                        let near = showsResume ? min(RingDrag.distance(p, upper), RingDrag.distance(p, lower)) : RingDrag.distance(p, upper)
                         guard abs(r - (size - lw) / 2) < lw * 1.2, near <= 6 else { ignoringDrag = true; return }
                         pressStart = p
                     }
                     guard let s = pressStart else { return }
                     let now = RingDrag.percent(dx: dx, dy: dy, previous: s)
-                    guard let h = RingDrag.handle(start: s, now: now, upper: upper, lower: lower) else { return }
+                    guard let h = showsResume ? RingDrag.handle(start: s, now: now, upper: upper, lower: lower) : .upper else { return }
                     drag = (h, upper, lower)
                 }
                 guard let d = drag else { return }
-                let p = RingDrag.percent(dx: dx, dy: dy, previous: d.handle == .upper ? d.upper : d.lower)
-                let m = RingDrag.move(d.handle, to: p, upper: d.upper, lower: d.lower)
+                let p = RingDrag.snap(RingDrag.percent(dx: dx, dy: dy, previous: d.handle == .upper ? d.upper : d.lower))
+                let m = RingDrag.move(d.handle, to: p, upper: d.upper, lower: d.lower, gap: RingDrag.step)
                 if m.upper != d.upper || m.lower != d.lower {
                     drag = (d.handle, m.upper, m.lower)
                     NSHapticFeedbackManager.defaultPerformer.perform(.alignment, performanceTime: .default)

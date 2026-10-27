@@ -93,8 +93,12 @@ enum SettingsIndex {
             i("Wi-Fi networks", "Networks that put you in a zone. Open a zone to edit them.", ["ssid", "router", "bssid", "add current network"], .zones, anchor: "Zones"),
             i("Saved place", "Switch zones by location with a map circle. Open a zone to set it.", ["location", "radius", "gps", "geofence", "map"], .zones, anchor: "Zones"),
             // Charging tools
+            i("On battery while plugged in", "Hours a week the charger was cut, so the Mac ran from its battery.", ["charger cut", "drain", "hold", "hours", "pause"], .history),
             i("Time above 80%", "Hours a week each zone keeps the battery above 80%, with a suggestion to lower it.", ["wear", "zone", "hours", "high charge", "suggest"], .history),
             i("Ready by", "Reach a chosen charge before you leave each day.", ["schedule", "departure", "leave", "alarm", "weekday", "wake"], .charging),
+            i("macOS charge limit", "Let macOS hold your limit and run the Mac from the charger when a zone matches its 80, 85, 90 or 95% step.", ["system settings", "battery", "firmware", "charger", "ac", "optimized", "pass-through"], .charging),
+            i("Sailing", "Let the battery drift down to the resume level before charging again. Off by default.", ["resume", "hysteresis", "drift", "floor", "charger cut"], .charging),
+            i("Keep charging while busy", "Leave the charger on for a point or two past the limit while the Mac is busy.", ["load", "cpu", "busy", "overshoot", "battery"], .charging, anchor: "Keep charging while busy"),
             i("Heat Protection", "Pause charging when the battery gets hot.", ["temperature", "thermal", "hot", "cool", "celsius"], .charging),
             i("Heat limit", "The temperature at which charging pauses.", ["celsius", "degrees", "threshold"], .charging, anchor: "Heat Protection"),
             i("Discharge", "Drain to a level with the charger plugged in.", ["drain", "lower", "run down"], .charging),

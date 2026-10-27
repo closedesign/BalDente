@@ -4,6 +4,19 @@
 BalDente stays on 0.x until: it is notarized, it has been tested on at least three Mac models and two macOS versions, it has had a week of daily use
 without a charging bug, and the helper installs, updates and uninstalls cleanly on a fresh account.
 
+## 0.19 (pre-release)
+- **Ring and sliders move in steps of 5.** The draggable markers on the Overview ring snap to multiples of 5, like the limit sliders. With Sailing off the faded resume marker and band are gone, and only the limit marker can be dragged.
+- **macOS Charge Limit** (Charging page, off by default): tell BalDente which step (80, 85, 90 or 95%) you set in System Settings > Battery, and zones at exactly that limit are left to macOS. macOS holds the charge in firmware and the Mac runs from the charger instead of the battery, which BalDente's charger cut can't do. A zone that needs more than macOS's limit triggers a reminder to raise it (and another to set it back when you return); BalDente can't read or change that setting. Zones below the limit still use BalDente. No helper update needed.
+- **Fresh-install defaults are now 80% everywhere** (Home 80/75, School 80/75, Travel 100/95, Everywhere else 80/75), which is also what macOS's own limit can hold. Existing settings are untouched.
+
+## 0.18 (pre-release)
+- **Keep charging while busy** (Charging page, on by default): when the Mac is busy (load of 0.6 per core or more) and the battery has only just reached its limit, the charger stays on for up to 2 more points instead of running a build or export from the battery. Needs the helper update.
+- **On battery while plugged in** (History): hours per day over the last week that the charger was cut, so the real cost of a limit is visible.
+- **Charge-control key watch:** the helper reports which pass-through SMC keys (`bfF0`, `bfD0`, `bfE0`, `CHTE`, `CH0B`, `CH0C`) it can read. They are unreadable on current Macs; if a macOS update opens any, Recent changes and a notification say so (category "Mac and macOS changes"), and Diagnostics lists them. BalDente still can't run the Mac from the charger while charging is paused, because it doesn't use these keys yet. Needs the helper update.
+
+## 0.17 (pre-release)
+- **Sailing is now an option, off by default** (Charging page). With it off, charging resumes one point under the limit, so the charger is only cut for a moment at a time. This Mac can only pause charging by cutting the charger, which runs it from the battery, so the old 5-point drift wore the battery more than it saved. Turn it on to use each zone's own resume level again; the zone editor only shows "Resume at" while it is on. No helper update needed.
+
 ## 0.16 (pre-release)
 - **Cooling down card:** while Heat Protection holds the charger, the Overview shows the last 30 minutes of battery temperature, whether it's falling, and about how long until charging resumes.
 - **Recent changes:** when the battery is over the heat limit but under 20%, BalDente now logs "Charging despite the heat" (and notifies unless Heat Protection notifications are muted) instead of charging silently. Needs the helper update.

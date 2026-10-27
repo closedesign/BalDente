@@ -52,6 +52,7 @@ struct OverviewPage: View {
     private func heroLayout(horizontal: Bool) -> some View {
         let ring = BatteryRing(percent: model.percent, lower: model.target.lower, upper: model.target.upper,
                                caption: model.ringCaption, tint: model.accent, size: horizontal ? 250 : 200,
+                               showsResume: model.sailing,
                                onLimitsChange: model.ringEditable ? { model.setTargetLimits(upper: $0, lower: $1) } : nil)
         return AnyLayout(horizontal ? AnyLayout(HStackLayout(spacing: 40)) : AnyLayout(VStackLayout(alignment: .leading, spacing: 20))) {
             ring.id("Charge ring").tourAnchor("Charge ring")
@@ -310,12 +311,13 @@ struct OverviewPage: View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: 20) {
                 ForEach(model.config.zones) { z in
-                    ZoneTile(zone: z, active: model.target.zoneID == z.id,
+                    ZoneTile(zone: z.showing(sailing: model.sailing), active: model.target.zoneID == z.id,
                              pinned: model.config.overrideZone == z.name,
                              onSelect: { model.config.overrideZone = model.config.overrideZone == z.name ? nil : z.name },
                              onEdit: { model.go(.zones, focus: "Zones") })
                 }
-                DefaultTile(upper: model.config.defaultUpper, lower: model.config.defaultLower,
+                DefaultTile(upper: model.config.defaultUpper,
+                            lower: ResumeLevel.effective(upper: model.config.defaultUpper, lower: model.config.defaultLower, sailing: model.sailing),
                             active: model.target.zoneID == nil && model.target.label == "Default") { model.go(.zones, focus: "Everywhere else") }
             }
             .padding(.horizontal, 20).padding(.vertical, 26)

@@ -109,10 +109,10 @@ struct ChargingHeader: View {
         VStack(spacing: 10) {
             HStack(spacing: 14) {
                 BatteryRing(percent: model.status?.percent ?? model.system.power.percent, lower: model.target.lower, upper: model.target.upper,
-                            caption: model.ringCaption, tint: model.accent, size: 96)
+                            caption: model.ringCaption, tint: model.accent, size: 96, showsResume: model.sailing)
                 VStack(alignment: .leading, spacing: 3) {
                     Text(model.target.label).font(.system(size: 20, weight: .bold, design: .rounded))
-                    Text(model.status == nil ? "Helper not running" : "Stop \(model.target.upper)% · resume \(model.target.lower)%")
+                    Text(model.status == nil ? "Helper not running" : model.sailing ? "Stop \(model.target.upper)% · resume \(model.target.lower)%" : "Stop at \(model.target.upper)%")
                         .font(.callout).foregroundStyle(.secondary)
                     Text(model.headline).font(.caption).foregroundStyle(.secondary)
                 }

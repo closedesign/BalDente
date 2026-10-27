@@ -63,9 +63,8 @@ There's no Xcode project — everything goes through `swift build`/`swift test` 
   "Zones" if it touches zones), plus `CHANGELOG.md`. The README is the public sales page (github.com/closedesign/BalDente); keep claims true to the code.
 - Keep the **Zones** section highlighted: zone switching by Wi-Fi or saved place is the headline feature, and it is free here whereas other
   battery limiters usually charge for it. Don't make claims about specific competitors' features that can't be verified.
-- Defaults to state accurately: a fresh install ships zones **Home 50%/45%**, School 80%/75%, Travel 100%/95%, and "Everywhere else" 80%/75%
-  (`Config.init` in `BalDenteCore/Zones.swift`). **Out of the box charging is limited to 50% at home**; the Home zone applies once the user adds
-  their home Wi-Fi. Heat Protection defaults to 35 °C (range 30–60, `BalDenteCore/HeatLimit.swift`).
+- Defaults to state accurately: a fresh install ships zones **Home 80%/75%**, School 80%/75%, Travel 100%/95%, and "Everywhere else" 80%/75%
+  (`Config.init` in `BalDenteCore/Zones.swift`), so out of the box charging is limited to 80%. Heat Protection defaults to 35 °C (range 30–60, `BalDenteCore/HeatLimit.swift`).
 - Donate buttons (Ko-fi, Buy Me a Coffee: `SupportLinks` in `ConfigPages.swift`) appear on About, Overview and the compact layout, and in the README and
   `.github/FUNDING.yml`. Keep them in sync if the handles change (both are `closedesign`).
 - Screenshots live in `docs/images/`; retake them when a page's look changes noticeably (no real Wi-Fi names, no helper-update banner).
@@ -104,6 +103,9 @@ There's no Xcode project — everything goes through `swift build`/`swift test` 
 - The heat-limit range (30–60 °C) and default (35 °C) live in `BalDenteCore/HeatLimit.swift` and are shared with `baldented`; changing them means users must update the helper.
 - Zone names must be unique and not reserved ("Default", "Top Up", "Travel Mode", "manual"); use `Model.addZone()`, and the zone editor calls
   `Model.fixZoneName` on close. Tiles mark the active zone by `target.zoneID`, not by label.
+- Sailing is opt-in (`Config.sailing`, off by default). With it off the app sends `Target.sending(sailing:)` (resume = limit - 1) to the helper and `Model.target` holds that enforced level; zones keep their saved `lower`. No helper change. Use `ResumeLevel.effective`/`Zone.showing` for any UI that shows a resume level.
+- Pausing = cutting the adapter (`CHIE`); the pass-through keys (`bf*`, `CHTE`, `CH0B/C`) are missing or refused even for root on Mac16,1 / macOS 27.0.1, so the Mac runs from the battery while held. The helper only reports which `ChargeKeys.watched` read OK (`Status.chargeKeys`); the app announces once if that set changes. `LoadGuard` (helper, `loadguard on|off`) and the app-side `BatteryHold` (battery-hold.json) limit and show that cost.
+- macOS's own charge limit (80/85/90/95) is the only real AC pass-through. BalDente can't read it: `Config.macLimit` is the step the user says they set. `MacChargeLimit.sending` sends a matching zone to the helper as upper 100 (no cut) while `Model.target` keeps the real limit; `remindMacLimit` only announces. Never write to macOS's setting.
 - Labels sent to the helper go through `Target.wire` (Core); `baldented` applies the same function, so app and helper always agree on the label.
 - A throwaway test bundle (even with `BALDENTE_DEMO=1`) reads and writes the real `~/Library/Application Support/BalDente/config.json`; back it up before UI tests that change limits.
 - The Overview ring's markers are draggable (`BatteryRing.onLimitsChange`, math in `BalDenteCore/RingDrag.swift`); it commits once on release via `Model.setTargetLimits`.
