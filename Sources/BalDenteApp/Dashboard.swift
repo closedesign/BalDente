@@ -382,6 +382,7 @@ struct ZoneEditor: View {
     @ObservedObject var model: Model
     let zoneID: UUID
     @Environment(\.dismiss) private var dismiss
+    @State private var pickingPlace = false
 
     private var index: Int? { model.config.zones.firstIndex { $0.id == zoneID } }
 
@@ -466,18 +467,25 @@ struct ZoneEditor: View {
                 HStack {
                     Text("Radius \(Int(p.radius)) m").monospacedDigit()
                     Slider(value: Binding(get: { z.wrappedValue.place?.radius ?? 150 }, set: { z.wrappedValue.place?.radius = $0 }),
-                           in: 100...1000, step: 50)
+                           in: 100...Place.maxRadius, step: 100)
                 }
                 HStack {
                     Button("Update to here") { model.captureLocation(for: zoneID) }.buttonStyle(.glass)
+                    Button("Choose on map…") { pickingPlace = true }.buttonStyle(.glass)
                     Button("Remove") { z.wrappedValue.place = nil }.buttonStyle(.glass)
                 }
             } else {
-                Button("Use my current location") { model.captureLocation(for: zoneID) }.buttonStyle(.glass)
+                HStack {
+                    Button("Use my current location") { model.captureLocation(for: zoneID) }.buttonStyle(.glass)
+                    Button("Choose on map…") { pickingPlace = true }.buttonStyle(.glass)
+                }
             }
             if let m = model.captureMessage { Text(m).font(.caption).foregroundStyle(.secondary) }
             Text("Used when no saved Wi-Fi matches. Macs have no GPS chip, so this uses Wi-Fi positioning, good to about 100 m. macOS watches the area itself, so it costs almost no battery.")
                 .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+        }
+        .sheet(isPresented: $pickingPlace) {
+            PlacePicker(initial: z.wrappedValue.place) { z.wrappedValue.place = $0; model.captureMessage = nil }
         }
     }
 

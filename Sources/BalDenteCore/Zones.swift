@@ -2,6 +2,8 @@ import Foundation
 
 /// A circle on the map. macOS has no GPS chip, so this is Wi-Fi-based positioning: keep the radius at 100 m or more.
 public struct Place: Codable, Equatable {
+    /// Largest radius the editors offer (big enough for an airport or campus).
+    public static let maxRadius: Double = 5000
     public var latitude: Double
     public var longitude: Double
     public var radius: Double

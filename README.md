@@ -53,7 +53,7 @@ tracking.** The source is here, so you can read exactly what the helper does.
 A **zone** is a charge limit that switches on by itself, based on where you are:
 
 - **By Wi-Fi network:** add your home, school or office networks to a zone and its limit applies the moment you connect.
-- **By saved place:** draw a circle on a map for places with no known Wi-Fi.
+- **By saved place:** pick a spot on a map (search an address or click to drop a pin) and set a radius, for places with no known Wi-Fi.
 - **Each zone has its own limit** (and resume level when Sailing is on), a name, an icon and its own background color.
 - **Out of the box BalDente limits charging to 80%** (it resumes at 75%), so a Mac that lives on its charger
   stops sitting at a full charge. The starter zones are **Home** (80%), **School** (80%), **Travel** (100%), and **Everywhere else** (80%)

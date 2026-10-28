@@ -126,6 +126,7 @@ Battery Health Advisor tips if advice changed, `SECURITY.md`/`CONTRIBUTING.md` i
 - Every new helper command parses fixed tokens with range checks (the socket buffer is 512 bytes); never decode JSON from the socket.
 - Calibration steps live in `CalibrationRun` (Core, tested); the daemon only calls `advance`. Every start goes through `startCalibration()`, which clears `calibrateAt` and marks today's repeat run, so a plan can't fire a second calibration after a manual one.
 - Scheduled tasks never set the limit (zones own it and the app re-sends it every refresh). The LED key is only written once the user picks a mode (`lastLED`).
+- `PlacePicker.swift` is the MapKit sheet behind the zone editor's "Choose on map…" (edits a draft, writes `Zone.place` on Save; search uses MKLocalSearch, no extra permission).
 - `baldente://zone/<name>` pins an existing zone only (`Model.run`); Settings > General has Copy list / Copy command path for Shortcuts. `AppIntents` need Xcode's metadata step, which SwiftPM does not run, so Shortcuts works through `baldente://` and the CLI instead.
 
 ## Battery data

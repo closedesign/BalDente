@@ -91,7 +91,7 @@ enum SettingsIndex {
             i("Zones", "Add, rename and edit zones with their own charge limits.", ["add zone", "new zone", "home", "school", "work", "travel", "delete zone", "icon"], .zones),
             i("Everywhere else", "Default limits when no zone matches.", ["default limits", "fallback", "stop charging at", "resume at", "sailing"], .zones),
             i("Wi-Fi networks", "Networks that put you in a zone. Open a zone to edit them.", ["ssid", "router", "bssid", "add current network"], .zones, anchor: "Zones"),
-            i("Saved place", "Switch zones by location with a map circle. Open a zone to set it.", ["location", "radius", "gps", "geofence", "map"], .zones, anchor: "Zones"),
+            i("Saved place", "Switch zones by location with a map circle: search or click a map, or use your current location. Open a zone to set it.", ["location", "radius", "gps", "geofence", "map", "choose on map", "address", "pin"], .zones, anchor: "Zones"),
             // Charging tools
             i("On battery while plugged in", "Hours a week the charger was cut, so the Mac ran from its battery.", ["charger cut", "drain", "hold", "hours", "pause"], .history),
             i("Time above 80%", "Hours a week each zone keeps the battery above 80%, with a suggestion to lower it.", ["wear", "zone", "hours", "high charge", "suggest"], .history),
