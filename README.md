@@ -84,7 +84,7 @@ four dots at the bottom are the volume.
 **Charging control**
 - Charge limit applied by a small root helper through the SMC. By default charging resumes one point under the limit; turn on **Sailing** (Charging page, off by default) to use a separate, lower resume level per zone (hysteresis). Pausing charging cuts the charger on current Macs, so a wide band runs the Mac from the battery.
 - **macOS Charge Limit:** macOS can hold 80, 85, 90 or 95% itself and run the Mac from the charger. BalDente reads your setting from
-  System Settings > Battery automatically (or you can pick a step by hand), and zones at that limit are left to macOS; it reminds you to raise it when a zone needs more. Zones below it still use BalDente.
+  System Settings > Battery automatically (or you can pick a step by hand), and zones at that limit are left to macOS; when a zone needs more, the card says which step to pick ("Travel needs 100%. macOS is set to 80%.") with an **Open Battery Settings** button, once per change. Icon-only buttons show hover text. Zones below it still use BalDente.
 - **Keep charging while busy:** when the Mac is working hard and the battery has only just reached its limit, the charger stays on for up to 2 more points (on by default, Charging page).
 - **On battery while plugged in:** History shows the hours each day the charger was cut at your limit, so you can see what a limit costs on this Mac.
 - **Drag the ring:** on Overview, drag the markers on the battery ring to set where charging stops (and where it resumes, with Sailing on),
@@ -196,7 +196,7 @@ Changing the charge limit needs root, so BalDente installs a small helper, `bald
 a local Unix socket, applies the limit through the Mac's SMC, and does nothing else: no network access, no analytics.
 
 - **Location** access is used only to read Wi-Fi names and saved places for zone switching.
-- **macOS Charge Limit** is read with `pmset -g battlimit` (no extra permission); BalDente never changes macOS's own setting.
+- **macOS Charge Limit** is read with `pmset -g battlimit` (no extra permission); BalDente never changes macOS's own setting (it is gated by a private Apple entitlement), it only opens System Settings > Battery.
 - **Calendar** access is used only for the start time of your next timed event when *Calendar Ready by* is on.
 - **Habit suggestions** record only unplug times and weekdays (and zone exits on battery) in `habits.json`, and Wi-Fi names that
   no zone has in `network-habits.json`, both on your Mac. Nothing is uploaded.

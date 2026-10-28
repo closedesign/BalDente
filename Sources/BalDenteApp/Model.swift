@@ -1018,7 +1018,9 @@ final class Model: NSObject, ObservableObject, CLLocationManagerDelegate, UNUser
 
     // MARK: macOS charge limit
 
-    private var macLimitBlocked = false
+    private var macLimitPromptKey: String?
+    /// Set while the current zone needs a higher macOS step than the one set. Drives the prompt in the Charging page's card.
+    @Published private(set) var macLimitPrompt: MacLimitPrompt?
     /// What `pmset -g battlimit` reported at the last read (nil: no limit set in macOS).
     @Published private(set) var detectedMacLimit: Int?
 
@@ -1044,11 +1046,23 @@ final class Model: NSObject, ObservableObject, CLLocationManagerDelegate, UNUser
 
     /// With a macOS limit in use, tell the user when a zone switch needs it raised, and when it can go back. Reminds, never changes.
     private func remindMacLimit(_ t: Target) {
-        guard let m = macLimit else { macLimitBlocked = false; return }
-        let blocked = MacChargeLimit.role(upper: t.upper, macLimit: m) == .blocked
-        guard blocked != macLimitBlocked else { return }
-        macLimitBlocked = blocked
-        announce(.macLimit(blocked: blocked, zone: t.label, upper: t.upper, macLimit: m))
+        let prompt = MacLimitPrompt.make(zone: t.label, upper: t.upper, macLimit: macLimit)
+        if macLimitPrompt != prompt { macLimitPrompt = prompt }
+        guard prompt?.key != macLimitPromptKey else { return }   // once per (zone, macOS limit) change, not every refresh
+        let wasBlocked = macLimitPromptKey != nil
+        macLimitPromptKey = prompt?.key
+        if let p = prompt {
+            announce(.macLimit(blocked: true, zone: p.zone, upper: t.upper, macLimit: p.macLimit))
+        } else if wasBlocked, let m = macLimit {
+            announce(.macLimit(blocked: false, zone: t.label, upper: t.upper, macLimit: m))
+        }
+    }
+
+    /// Takes the user to System Settings > Battery. Only opens the pane; BalDente never changes macOS's setting.
+    func openBatterySettings() {
+        for s in MacLimitPrompt.settingsURLs {
+            if let u = URL(string: s), NSWorkspace.shared.open(u) { return }
+        }
     }
 
     // MARK: Time on battery while plugged in

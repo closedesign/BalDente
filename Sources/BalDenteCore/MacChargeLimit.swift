@@ -53,3 +53,25 @@ public enum MacChargeLimit {
         return found.min()
     }
 }
+
+/// The "set macOS to N%" prompt. BalDente can't write macOS's limit (it needs a private Apple entitlement), so this only says which step to pick.
+public struct MacLimitPrompt: Equatable {
+    public let zone: String
+    public let needed: Int
+    public let macLimit: Int
+    /// Changes when the zone or macOS's limit does; used to remind once per change instead of on every refresh.
+    public var key: String { "\(zone)|\(macLimit)" }
+
+    /// Nil unless the zone is blocked by macOS's limit (macOS limit unknown or not one of its steps: nil).
+    public static func make(zone: String, upper: Int, macLimit: Int?) -> MacLimitPrompt? {
+        guard let m = macLimit, MacChargeLimit.role(upper: upper, macLimit: m) == .blocked else { return nil }
+        return MacLimitPrompt(zone: zone, needed: MacChargeLimit.neededSetting(for: upper), macLimit: m)
+    }
+
+    /// For example "Travel needs 100%. macOS is set to 80%."
+    public var message: String { "\(ChangeEvent.zoneName(zone)) needs \(needed)%. macOS is set to \(macLimit)%." }
+    public static let detail = "Pick the new step in System Settings > Battery. BalDente can't change it for you."
+    public static let buttonTitle = "Open Battery Settings"
+    /// Tried in order; the last just opens System Settings.
+    public static let settingsURLs = ["x-apple.systempreferences:com.apple.Battery-Settings.extension", "x-apple.systempreferences:"]
+}

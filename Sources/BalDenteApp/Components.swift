@@ -148,7 +148,7 @@ struct ZoneTile: View {
                 Text("resume at \(zone.lower)%").font(.system(.callout, design: .rounded)).foregroundStyle(.secondary)
                 Spacer()
                 Button(action: onEdit) { Image(systemName: "slider.horizontal.3") }
-                    .buttonStyle(.glass).buttonBorderShape(.circle)
+                    .buttonStyle(.glass).buttonBorderShape(.circle).help("Edit \(zone.name) limits")
             }
         }
         .padding(18)
