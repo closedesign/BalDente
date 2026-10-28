@@ -38,6 +38,14 @@ struct ChargingPage: View {
                 }
             }
             card("macOS Charge Limit", "bolt.horizontal.fill", .green) {
+                if let p = model.macLimitPrompt {
+                    VStack(alignment: .leading, spacing: 6) {
+                        Label(p.message, systemImage: "exclamationmark.triangle.fill").font(.callout.weight(.semibold)).foregroundStyle(.orange)
+                        Text(MacLimitPrompt.detail).font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+                        Button { model.openBatterySettings() } label: { pill(MacLimitPrompt.buttonTitle, "gearshape") }
+                            .buttonStyle(.glass).help("Open System Settings > Battery to set macOS's charge limit to \(p.needed)%")
+                    }.settingAnchor("Open Battery Settings")
+                }
                 Picker("macOS charge limit", selection: Binding(
                     get: { model.config.macLimitAuto ?? (model.config.macLimit == nil) ? -1 : (model.config.macLimit ?? 0) },
                     set: { v in

@@ -110,6 +110,7 @@ struct MainWindow: View {
             .background(selected ? AnyShapeStyle(Color.primary.opacity(0.14)) : AnyShapeStyle(.clear), in: .rect(cornerRadius: 10))
             .contentShape(.rect(cornerRadius: 10))
         }
+        .help(pg.rawValue)
         .buttonStyle(.plain)
         .accessibilityAddTraits(selected ? .isSelected : [])
     }

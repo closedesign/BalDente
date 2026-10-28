@@ -78,7 +78,7 @@ struct CompactView: View {
                         Spacer()
                         Text("\(z.upper)% / \(ResumeLevel.effective(upper: z.upper, lower: z.lower, sailing: model.sailing))%").foregroundStyle(.secondary).monospacedDigit()
                         if model.target.zoneID == z.id { Image(systemName: "checkmark.circle.fill").foregroundStyle(model.accent) }
-                        Button { sheet = .zone(z.id) } label: { Image(systemName: "slider.horizontal.3") }.buttonStyle(.borderless)
+                        Button { sheet = .zone(z.id) } label: { Image(systemName: "slider.horizontal.3") }.buttonStyle(.borderless).help("Edit \(z.name) limits")
                     }
                     .contentShape(Rectangle())
                     .onTapGesture { model.config.overrideZone = model.config.overrideZone == z.name ? nil : z.name }

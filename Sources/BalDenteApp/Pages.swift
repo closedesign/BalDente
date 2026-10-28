@@ -104,6 +104,7 @@ enum SettingsIndex {
             i("Discharge", "Drain to a level with the charger plugged in.", ["drain", "lower", "run down"], .charging),
             i("Calibration", "Drain to 15%, charge to 100%, rest an hour.", ["calibrate", "accuracy", "percentage wrong", "cycle"], .charging),
             i("Calibration schedule", "Repeat calibration on chosen days of the month.", ["repeat", "monthly", "calibrate at"], .charging, anchor: "Calibration"),
+            i("Open Battery Settings", "Shown when a zone needs a higher macOS charge limit than the one set: says which step to pick and opens System Settings > Battery.", ["macos", "charge limit", "raise", "system settings", "prompt"], .charging),
             i("Low Power Mode", "Ask macOS to reduce power use.", ["energy", "save power", "efficiency"], .charging),
             i("Stop charging when sleeping", "Cut the charger as the Mac sleeps so it can't charge past the limit.", ["sleep", "lid", "overnight", "close"], .charging),
             i("Stay awake until the limit", "Keep the Mac awake only while it charges toward the limit.", ["sleep", "lid closed", "clamshell", "disable sleep"], .charging),

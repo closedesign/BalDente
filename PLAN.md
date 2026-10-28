@@ -26,3 +26,5 @@ Advisor tips, SECURITY/CONTRIBUTING when relevant, this file and CLAUDE.md. Deta
 - Legacy keys CH0B / CH0C / CHTE / CH0I: not present.
 - bfF0 / bfD0 / bfE0 / CH0J: exist but are root-only (NotPrivileged for a normal user).
 - So this machine likely uses the firmware-limit backend, with Apple gating on newer macOS 27 betas.
+
+- 0.24: "Set macOS to N%" prompt (`MacLimitPrompt`, Core) + Open Battery Settings button; hover `.help` text on icon-only buttons.

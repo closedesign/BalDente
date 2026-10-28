@@ -413,7 +413,7 @@ struct ZoneEditor: View {
                                     Button { z.wrappedValue.icon = name } label: {
                                         Image(systemName: name).font(.title3).frame(width: 28, height: 28)
                                     }
-                                    .buttonStyle(.glass).buttonBorderShape(.circle)
+                                    .buttonStyle(.glass).buttonBorderShape(.circle).help("Use the \(name) icon")
                                     .tint(Theme.icon(z.wrappedValue) == name ? Theme.accent(z.wrappedValue.name) : nil)
                                 }
                             }.padding(4)
@@ -450,7 +450,7 @@ struct ZoneEditor: View {
                     Text(n).lineLimit(1)
                     Spacer()
                     Button { z.wrappedValue.networks.removeAll { $0 == n } } label: { Image(systemName: "xmark") }
-                        .buttonStyle(.glass).buttonBorderShape(.circle).controlSize(.small)
+                        .buttonStyle(.glass).buttonBorderShape(.circle).controlSize(.small).help("Remove this network from the zone")
                 }
             }
             if z.wrappedValue.networks.isEmpty { Text("None yet").foregroundStyle(.secondary) }

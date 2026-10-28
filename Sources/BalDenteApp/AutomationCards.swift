@@ -76,8 +76,8 @@ struct ScheduleCard: View {
                         }
                     }
                     Spacer(minLength: 4)
-                    Button { editing = t } label: { Image(systemName: "pencil") }.buttonStyle(.glass).buttonBorderShape(.circle)
-                    Button { model.cmd("task remove \(t.id)") } label: { Image(systemName: "trash") }.buttonStyle(.glass).buttonBorderShape(.circle)
+                    Button { editing = t } label: { Image(systemName: "pencil") }.buttonStyle(.glass).buttonBorderShape(.circle).help("Edit this task")
+                    Button { model.cmd("task remove \(t.id)") } label: { Image(systemName: "trash") }.buttonStyle(.glass).buttonBorderShape(.circle).help("Remove this task")
                 }
             }
             HStack {

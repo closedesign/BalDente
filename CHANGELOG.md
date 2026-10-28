@@ -5,7 +5,9 @@ BalDente stays on 0.x until: it is notarized, it has been tested on at least thr
 without a charging bug, and the helper installs, updates and uninstalls cleanly on a fresh account.
 
 ## 0.24 (pre-release)
-- **Choose a saved place on a map:** a zone's Saved place now has **Choose on map…**. Search an address or click the map to drop the pin, set the radius with the slider and tap Save. No new permission; the search and map tiles use Apple Maps.
+- **Choose a saved place on a map:** a zone's Saved place now has **Choose on map…**. Search an address or click the map to drop the pin, set the radius (100 m to 5 km) with the slider and tap Save. No new permission; the search and map tiles use Apple Maps.
+- **"Set macOS to N%" prompt:** when a zone needs more than macOS's charge limit allows (for example Travel at 100% while macOS holds 80%), the Charging page's macOS Charge Limit card says "Travel needs 100%. macOS is set to 80%." with an **Open Battery Settings** button. It is reminded once per zone and macOS-limit change, not every refresh. BalDente still never changes macOS's setting.
+- **Hover text:** icon-only buttons now explain themselves (sidebar pages when the sidebar is icons only, zone edit and remove-network buttons, task edit/remove, icon picker, Compact layout).
 
 ## 0.23 (pre-release)
 - **Shortcuts compatibility:** new `baldente://zone/<name>` link pins an existing zone (a link can't create one), so a Shortcut or Focus automation can switch to Travel or Home. General's Automation links row gets a **Copy command path** button for Run Shell Script (Shortcuts has no `PATH`), and the README has a Shortcuts section with examples. Native App Intents still need Xcode's metadata step.
